@@ -1,0 +1,69 @@
+MODELCHR=L
+MODELSTR=medium
+
+MTCPROOT=..\..
+
+tcp_h_dir = $(MTCPROOT)\TCPINC
+tcp_c_dir = $(MTCPROOT)\TCPLIB
+common_h_dir = $(MTCPROOT)\INCLUDE
+
+CC=wcl
+CPP=wcl
+CFLAGS=-c -m$(MODELCHR) -d__DOS__ -ecw -I. -d2 -q
+CPPFLAGS=-c -cc++ -m$(MODELCHR) -d__DOS__ -dCFG_H="nwbackup.cfg" -ecw -I.;$(tcp_h_dir) -d2 -q
+AS=wasm
+AFLAGS= -0 -m$(MODELCHR) -q
+LIB=wlib
+LINKER=wcl
+LFLAGS=-bcl=dos -q -d2
+
+
+tcp_objs=packet.obj arp.obj eth.obj ip.obj tcp.obj tcpsockm.obj udp.obj utils.obj dns.obj timer.obj ipasm.obj
+OBJS=nwbackup.obj transcvr.obj mediator.obj
+EXES=nwbackup.exe
+
+all: clean nwbackup.exe
+test: clean test\dirtest.exe
+
+#Include these directories
+.asm : $(tcp_c_dir)
+
+.cpp : $(tcp_c_dir)
+
+
+.asm.obj:
+	$(AS) $(AFLAGS) $(tcp_c_dir)\$*.asm
+
+.c.obj:
+	$(CC) $(CFLAGS) $*.c
+	
+.cpp.obj:
+	$(CPP) $(CPPFLAGS) $(tcp_c_dir)\$*.cpp
+
+test\dirtest.obj: test\dirtest.c
+	$(CC) $(CFLAGS) -fo=test\dirtest.obj test\dirtest.c
+	
+test\dirtest.exe: test\dirtest.obj dir.obj	
+	$(LINKER) $(LFLAGS) test\dirtest.obj dir.obj
+
+#nwbackup.obj:
+#	$(CPP) $(CPPFLAGS) $(tcp_c_dir)\$*.cpp
+	
+#nwbackup.exe: $(OBJS) $(tcp_objs)
+#	$(LINKER) $(LFLAGS) -fe=nwbackup.exe $(OBJS) $(tcp_objs)
+	
+#$(LIBNAME).LIB : $(OBJS)	
+	
+#All other exes	link against a single object file.
+.obj.exe:
+	$(LINKER) $(LFLAGS) $.exe $(OBJS)		
+
+#Assume BIN directory exists.
+install: .symbolic
+	copy /Y *.EXE .\BIN	 
+
+dbg-clean: .symbolic
+	del *.obj *.lib *.exe
+
+clean: .symbolic
+	del *.obj *.lib *.err *.exe
