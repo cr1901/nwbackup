@@ -1,5 +1,5 @@
 MODELCHR=L
-MODELSTR=medium
+MODELSTR=large
 
 MTCPROOT=..\..
 
@@ -19,11 +19,11 @@ LFLAGS=-bcl=dos -q -d2
 
 
 tcp_objs=packet.obj arp.obj eth.obj ip.obj tcp.obj tcpsockm.obj udp.obj utils.obj dns.obj timer.obj ipasm.obj
-OBJS=nwbackup.obj transcvr.obj mediator.obj
+OBJS=nwbackup.obj dir.obj mtcpftp.obj
 EXES=nwbackup.exe
 
 all: clean nwbackup.exe
-test: clean test\dirtest.exe
+test: clean-test test\dirtest.exe test\ftptest.exe test\mdirtest.exe test\tmptest.exe
 
 #Include these directories
 .asm : $(tcp_c_dir)
@@ -40,17 +40,48 @@ test: clean test\dirtest.exe
 .cpp.obj:
 	$(CPP) $(CPPFLAGS) $(tcp_c_dir)\$*.cpp
 
+#Test files
+#Dir traversal test
 test\dirtest.obj: test\dirtest.c
 	$(CC) $(CFLAGS) -fo=test\dirtest.obj test\dirtest.c
 	
 test\dirtest.exe: test\dirtest.obj dir.obj	
-	$(LINKER) $(LFLAGS) test\dirtest.obj dir.obj
-
-#nwbackup.obj:
-#	$(CPP) $(CPPFLAGS) $(tcp_c_dir)\$*.cpp
+	$(LINKER) $(LFLAGS) -fe=test\dirtest.exe test\dirtest.obj dir.obj
 	
-#nwbackup.exe: $(OBJS) $(tcp_objs)
-#	$(LINKER) $(LFLAGS) -fe=nwbackup.exe $(OBJS) $(tcp_objs)
+#FTP test
+test\ftptest.obj: test\ftptest.c
+	$(CC) $(CFLAGS) -I.. -fo=test\ftptest.obj test\ftptest.c
+	
+test\ftptest.exe: test\ftptest.obj mtcpftp.obj $(tcp_objs)
+	$(LINKER) $(LFLAGS) -fe=test\ftptest.exe test\ftptest.obj mtcpftp.obj $(tcp_objs)	
+	
+#Alternate dir traversal test	
+test\mdirtest.obj: test\mdirtest.c
+	$(CC) $(CFLAGS) -Za99 -fo=test\mdirtest.obj test\mdirtest.c	
+	
+test\mdirtest.exe: test\mdirtest.obj	
+	$(LINKER) $(LFLAGS) -fe=test\mdirtest.exe test\mdirtest.obj 
+	
+#Temp file test	
+test\tmptest.obj: test\tmptest.c
+	$(CC) $(CFLAGS) -fo=test\tmptest.obj test\tmptest.c
+	
+test\tmptest.exe: test\tmptest.obj	
+	$(LINKER) $(LFLAGS) -fe=test\tmptest.exe test\tmptest.obj	
+
+	
+#Application proper
+nwbackup.obj: nwbackup.c
+	$(CC) $(CFLAGS) -fo=nwbackup.obj nwbackup.c
+	
+dir.obj: dir.c
+	$(CC) $(CFLAGS) -fo=dir.obj dir.c 
+
+mtcpftp.obj: mtcpftp.cpp
+	$(CPP) $(CPPFLAGS) -fo=mtcpftp.obj mtcpftp.cpp 	
+
+nwbackup.exe: $(OBJS) $(tcp_objs)
+	$(LINKER) $(LFLAGS) -fe=nwbackup.exe $(OBJS) $(tcp_objs)
 	
 #$(LIBNAME).LIB : $(OBJS)	
 	
@@ -66,4 +97,7 @@ dbg-clean: .symbolic
 	del *.obj *.lib *.exe
 
 clean: .symbolic
-	del *.obj *.lib *.err *.exe
+	del *.obj *.lib *.err *.exe 
+	
+clean-test: .symbolic
+	del test\*.obj test\*.lib test\*.err test\*.exe	

@@ -29,7 +29,7 @@ int main(int argc, char * argv[]) {
   }
 
   if(!strcpy(path, argv[1]))
-    //if(strncpy(path, argv[1], DIR_MAX_PATH + 1) >= (DIR_MAX_PATH + 1))
+    /* if(strncpy(path, argv[1], DIR_MAX_PATH + 1) >= (DIR_MAX_PATH + 1)) */
   {
     /* Shouldn't fail... but Heartbleed convinces me to
     code defensively. */
@@ -108,24 +108,7 @@ int main(int argc, char * argv[]) {
       }
       //j++;
     }
-    //openDir(
-    /* if(getNextFile)
-    {
-    closeDir
-    popDir
-    if(root)
-    break;
-    }
-    if subdir
-    	pushDir
-    	openDir
-    	continue
-    */
-    //getchar();
   } while(!allDirsTraversed);
-  //while
-
-
 
   fprintf(stderr, "Directory traversal completed successfully.\n");
   return EXIT_SUCCESS;
