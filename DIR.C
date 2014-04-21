@@ -30,7 +30,7 @@ int8_t pushDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
   uint16_t pathLen;
   int copiedChars;
   char * temp;
-  //uint16_t prevSplitIndex;
+  /* uint16_t prevSplitIndex; */
 
   pathLen = strlen(pathName);
   if(s->nextEntry >= DIRSTACK_MAX_ENTRIES) {
@@ -74,7 +74,7 @@ int8_t pushDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
   (* s->entries[s->nextEntry]) = (* d);
   strcpy(s->pathName, pathName); /* We've already verified that paths
 		are okay, so strcpy shouldn't be dangerous here */
-  //prevSplitIndex = s->pathSplits[s->nextEntry];
+  /* prevSplitIndex = s->pathSplits[s->nextEntry]; */
   (s->nextEntry)++;
   /* We want to point at the null terminator for the current string, so
   it can be overwritten when we push another directory. */
@@ -162,9 +162,8 @@ char * createUnixName(char * dest, char * src) {
   }
 
   for(i = 0; i < rc; i++) {
-    //if(dest[i] == '\\')
-    if(dest[i] == 92) { //Backslash ASCII
-      //fprintf(stderr, "Found backslash!\n");
+    /* if(dest[i] == '\\') */
+    if(dest[i] == 92) { /* Backslash ASCII */
       dest[i] = '/';
     }
   }
