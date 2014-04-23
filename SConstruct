@@ -1,4 +1,4 @@
-mtcp_root = Dir('#/../..')
+mtcp_root = Dir('F:\Legacy\PC\SOURCE\mTCP-src_2013-05-23')
 
 tcp_inc_dir = mtcp_root.Dir('TCPINC')
 tcp_c_dir = mtcp_root.Dir('TCPLIB')
@@ -38,6 +38,7 @@ dir_test = env.Program([test_dir.File('dirtest.c'), 'dir.c'])
 mdir_test = env.Program(test_dir.File('mdirtest.c'), CFLAGS=['-Za99'])
 ftp_test = env.Program([test_dir.File('ftptest.c'), 'mtcpftp.cpp'] + mtcp_objs)
 temp_test = env.Program(test_dir.File('tmptest.c'))
+#ftpret_test = env.Program([test_dir.File('ftpret.c'), 'mtcpftp.cpp'] + mtcp_objs)
 
 test_exes = [dir_test, mdir_test, ftp_test, temp_test]
 env.Alias('test', test_exes)

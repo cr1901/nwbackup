@@ -5,14 +5,15 @@
 
 #include "nwbackup.h"
 
+/* Was causing a nice big fat stack overflow keeping these local! :) */
+char serverPath[129];
+char serverFilePath[129];
 
 int main(int argc, char * argv[]) {
   struct mTCPBackupParms nwParms;
   int rc;
   char tempfile[L_tmpnam];
   FILE * fp;
-  char serverPath[129];
-  char serverFilePath[129];
   char temp_format_str[] = "This implementation of C stdlib supports up to %u temp files.\n" \
                            "Temp filenames can be up to %u bytes in length.\n" \
                            "The current temp file's name is: %s\n";

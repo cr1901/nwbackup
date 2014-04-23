@@ -75,19 +75,29 @@ void __interrupt __far ctrlCHandler( ) {
 
 //enums
 enum initState {
-  OPEN_SERVER, SEND_USER, SEND_PASS, CHDIR_BACKUP_ROOT
+  OPEN_SERVER, SEND_USER, SEND_PASS, CHDIR_BACKUP_ROOT, ABORT_INIT
 };
 
 //Function declarations
 //void pollSocket(TcpSocket *s, uint32_t timeout);
 /* int16_t pollSocketAndGetRc( TcpSocket *s, uint8_t * buffer, uint16_t currOffset, \
   uint16_t maxSize, uint32_t timeout, uint16_t * ftpRc ); */
-uint16_t pollSocket( TcpSocket *s, uint8_t * buffer, uint16_t currOffset, uint16_t maxSize, uint32_t timeout );
+//uint16_t pollSocket( TcpSocket *s, uint8_t * buffer, uint16_t currOffset, uint16_t maxSize, uint32_t timeout );
+int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, uint16_t maxSize, uint32_t timeout );
 void readConfigParms( nwBackupParms * );
 int8_t parsePASVResponse( char *pos, IpAddr_t * pasvAddr, uint16_t * pasv_port );
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort);
 static void closeAndFreeDataSocket( TcpSocket * s );
 static void shutdown(int rc);
+int8_t findNextLineBreak(uint8_t ** buf, uint16_t * offsetFromEnd);
+
+extern "C"
+{
+int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
+  char ** afterRetVal, int8_t * multiLine);
+char * checkForNewline(char * buf, uint16_t bufSize);
+}
+
 
 //==============================================================================
 //NWBACKUP functions
@@ -100,13 +110,12 @@ static void shutdown(int rc);
 //that the app needs information from the backup driver, so parms is a means
 //to return information while reducing coupling.
 nwBackupCodes initRemote(nwBackupParms * parms) {
+  nwBackupCodes finalRc;
   enum initState currState = OPEN_SERVER;
   int16_t recvRc;
   uint8_t retryCount = 0; //retry count only reflects waiting extra time for data.
   //It does not actually resend a command to the server.
   int8_t socketClosedEarly = 0;
-  char * afterReturnCode;
-  uint16_t return_val;
   uint16_t currCmdLength;
   char return_code[30];
 
@@ -213,6 +222,122 @@ nwBackupCodes initRemote(nwBackupParms * parms) {
     fprintf( stderr, "Connected!\n\n" );
     currState = OPEN_SERVER;
   }
+  
+  //int8_t rc = 0;
+  uint16_t charsRc = 0;
+  uint16_t returnVal = 0;
+  char * afterReturnCode;
+  int8_t multiLineResponse = 0;
+  //int8_t done = 0;
+  
+  do
+  {
+    //getCommandResponse function?
+    rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, CMD_RESPONSE_BUFFER_SIZE, 10000);
+    if(rc != -2)
+    {
+      write( 1, cmdResponseBuffer, charsRc);
+    }
+    else
+    {
+      finalRc = REMOTE_TIMEOUT;
+      break;
+    }
+    
+    //Poll socket will attempt to return a response that ends on a newline.
+    //However, it is possible that multiple newlines were embedded in a
+    //multiline response. Parse these in case the end of multiline was found.
+    uint8_t * bufOffset = cmdResponseBuffer;
+    uint16_t charsLeft = charsRc;
+    int8_t lineBrkRc = 0;
+    
+    do{
+      	rc = checkforFTPResponse(bufOffset, charsLeft, &returnVal, \
+      	  &afterReturnCode, &multiLineResponse);
+    }while(multiLineResponse && findNextLineBreak(&bufOffset, &charsLeft));
+    
+    fprintf(stderr, "FTP return code: %d\n", returnVal);
+    fprintf(stderr, "checkforFTPResponse rc: %d\n", rc);
+    
+    /* if(multiLineResponse)
+    {
+      //fprintf(stderr, "multiline\n");
+    } */
+    switch(rc)
+    {
+      case 2:
+      case 1:
+	continue;
+      case -1:
+      case -2:  
+      case -3:
+	finalRc = SYNC_ERROR;
+	currState = ABORT_INIT;
+	break; //We can break out of the loop in the default of switch(currState).
+      case 0:
+	break;
+      default:
+	continue;
+    }
+    
+    if ( ctrlSocket->isRemoteClosed( ) ) {
+      finalRc = REMOTE_CLOSED_EARLY;
+      break;
+    }
+    
+    
+    switch(currState) {
+      case OPEN_SERVER:
+        if(returnVal != 220) {
+          fprintf(stderr, "\nTarget is not accessible.\nBackup aborted.");
+          finalRc = TARGET_INACCESSIBLE;
+          done = 1;
+        }
+        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "USER", parms->Username);
+        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+        currState = SEND_USER;
+        break;
+      case SEND_USER:
+        if(returnVal != 331) {
+          //fprintf(stderr, "Return val: %d", return_val);
+          fprintf( stderr, "\nServer says the username is bad. \nNot continuing." );
+          finalRc = ACCESS_DENIED;
+          done = 1;
+        }
+        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PASS", parms->Password);
+        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+        currState = SEND_PASS;
+        break;
+      case SEND_PASS:
+        if(returnVal != 230) {
+          //fprintf(stderr, "Return val: %d != 230", return_val);
+          fprintf(stderr, "\nServer says the password is bad. \nNot continuing." );
+          finalRc = ACCESS_DENIED;
+          done = 1;
+        }
+        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "CWD", parms->RootDir);
+        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+        currState = CHDIR_BACKUP_ROOT;
+        break;
+      case CHDIR_BACKUP_ROOT:
+        if(returnVal != 250) {
+          finalRc = TARGET_INACCESSIBLE;
+          done = 1;
+        }
+        else {
+          finalRc = SUCCESS; // We are good if we get here, and can continue.
+          done = 1;
+        }
+        break;
+      default:
+        done = 1; //Precaution
+        break;
+      }
+    //Get return code if synchronization not lost, and check if multiline response
+    //If multiline response,
+  }while(!done);
+  
+  return finalRc;
 }
 
 
@@ -236,7 +361,14 @@ nwBackupCodes openAndSendFile(char * remoteFileName, char * localFileName) {
 
 
 void closeRemote() {
-  return SUCCESS;
+  //Poll and get remaining contents
+  ctrlSocket->close( );
+  TcpSocketMgr::freeSocket( ctrlSocket );
+  setvect( 0x1b, oldCtrlBreakHandler);
+
+  Utils::endStack( );
+  Utils::dumpStats( stderr );
+  fclose( TrcStream );
 }
 
 
@@ -325,11 +457,20 @@ static void closeAndFreeDataSocket( TcpSocket * s ) {
   s = NULL;
 }
 
-//Blatantly stolen/modified from FTP.CPP!
+// Blatantly stolen/modified from FTP.CPP!
 // Timeout is specified in milliseconds
-uint16_t pollSocket( TcpSocket *s, uint8_t * buffer, uint16_t maxSize, uint32_t timeout ) {
 
+//This pollSocket routine attempts to check for an FTP return code... if
+//the buffer started in the middle of a response, it will attempt to synchronize
+//to a newline, but other program logic should catch that the program lost
+//synchronization.
+int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, uint16_t maxSize, uint32_t timeout ) 
+{
+
+  int8_t pollRc = 0;
   uint16_t recvRc = 0;
+  int8_t checkForMultiLine = 0;
+  int8_t multiLine = 0;
   //return 0; //Bytes read while polling
   clockTicks_t startTime = TIMER_GET_CURRENT( );
 
@@ -339,23 +480,145 @@ uint16_t pollSocket( TcpSocket *s, uint8_t * buffer, uint16_t maxSize, uint32_t 
     Arp::driveArp( );
     Tcp::drivePackets( );
 
-    int rc = s->recv( buffer + recvRc, (maxSize - recvRv) );
+    int rc = s->recv( buffer + recvRc, (maxSize - recvRc) );
     if ( rc > -1 ) {
       recvRc += rc;
     }
+    
+    //If buffer was filled, break.
+    if(recvRc >= maxSize)
+    {
+      //fprintf(stderr, "TOO LONG!\n");
+      pollRc = -1;
+      break;
+    }
+    
+    //check whether a line was received. If multiline, keep waiting for full
+    //response. If line received, break
+    if(buffer[recvRc - 2] == '\r' && buffer[recvRc - 1] == '\n')
+    {
+      //fprintf(stderr, "NEWLINE!\n");
+      pollRc = 0;
+      break;
+    }
 
-    //processSocketInput( ); Defer processing
-
+    
     uint32_t t_ms = Timer_diff( startTime, TIMER_GET_CURRENT( ) ) * TIMER_TICK_LEN;
 
     // Timeout?
     if ( t_ms > timeout ) {
+      pollRc = -2;
       break;
     }
 
   }
-  return recvRc;
+  (* charsRcvd) = recvRc;
+  return pollRc;
 }
+
+
+//Returns 1 if the next newline is before the end of the buffer,
+//0 if the next newline is at the end (at which point we should get
+//more data. A single-line response shouldn't have multiple newlines- that
+//probably indicates a sync error.
+int8_t findNextLineBreak(uint8_t ** buf, uint16_t * offsetFromEnd)
+{
+  uint16_t i = 0;
+  uint16_t currOffset = (* offsetFromEnd);
+  while(currOffset > 2 && !((* buf)[i] == '\r' &&  (* buf)[i + 1] == '\n'))
+  {
+    i++;
+    currOffset--;
+  }
+  
+  (* buf) = (* buf) + i + 2;
+  (* offsetFromEnd) = currOffset;
+  
+  return currOffset > 2 ? 1 : 0;
+  
+ /* nextNewlineAtEnd =  (currOffset > 2);
+  if(!nextNewlineAtEnd)
+  {
+    (* buf) = (* buf) + i + 2;
+    (* offsetFromEnd) = currOffset;
+  }
+  
+  return nextNewlineAtEnd; */
+}
+
+//Modified from mTCP FTP
+int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
+  char ** afterRetVal, int8_t * multiLine)
+{
+  //buf is a buffer, presumably a line from getLineFromSocket
+  //bufSize is the number of chars written.
+  //retVal is the parsed FTP return value. For purposes of multiline parsing,
+  	//it should be also used as an input
+  //afterRetVal returns a pointer to after the response code. Needed for parsing
+  	//the PASV port.
+  //multiLine input is set when we are in the middle of parsing a multiLine response
+  	//it is an input variable to avoid static state.
+  
+  char retCode[4] = {'\0'};
+  int8_t respRc = -1; //Assume not a server response
+  uint16_t tempRetVal = 0; //This variable is a guard against loss of synchronization.
+  //If a multiline response's final line doesn't match the input retVal, a loss
+  //of synchronization occurred. Otherwise, retVal gets set to this without a check.
+  if (bufSiz > 2 ) 
+  {
+    if (isdigit(buf[0]) && isdigit(buf[1]) && isdigit(buf[2])) 
+    {
+      (* afterRetVal) = Utils::getNextToken((char *) buf, retCode, 4 );
+      tempRetVal = atoi(retCode);
+      
+      // Great, it's a server response.
+      if((bufSiz > 3) && (buf[3] == '-') ) 
+      {
+        // Multi-line reponse
+        (* multiLine) = 1;
+        respRc = 1;
+      }
+      else 
+      {
+        // Normal return code or end of a multiline response.
+        respRc = 0;
+        if((* multiLine))
+        {
+          (* multiLine) = 0;
+          if((* retVal) != tempRetVal)
+          {
+            respRc = -3; //Server and client lost synchronization
+            //if initial return code and the multiline end return code differ!
+          }
+        }
+      }
+      (* retVal) = tempRetVal;
+    }
+    else
+    {
+        if ((* multiLine)) 
+        {
+          respRc = 2; //Lines not beginning with numbers
+          //okay in multiline response (will happen on buffer full,
+          //for instance).
+    	}
+    }
+  }
+  else 
+  {
+    respRc = -2; //Response too short.
+  }
+  return respRc;
+  
+  //Return vals:
+  //2: Continuation of multiline
+  //1: Start of multiline
+  //0: Standard response, end of multiline
+  //-1: Not a valid server response
+  //-2: Buffer too short
+  //-3: Multiline synchronization loss
+}
+
 
 //Based on mTCP FTP
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort) {
@@ -381,6 +644,19 @@ int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, u
 
   return 0;
 }
+
+
+//This function doesn't actually parse the response, it just checks that a
+//response exists.
+//int8_t checkforFTPResponse(char * buf, uint16_t bufSiz, uint16_t currFtpRc)
+//perhaps is better?
+
+
+
+
+//checkForUnexpectedResponse //poll until timeout... if even partial response,
+	//wait until full response arrives after timeout.
+//handleUnexpectedResponse(currState, retCode)
 
 
 static void shutdown( int rc ) {
