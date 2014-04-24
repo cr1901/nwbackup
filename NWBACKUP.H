@@ -21,12 +21,13 @@ typedef struct mTCPBackupParms {
 //difference between retryCount and timeout? Honestly, I'm not sure yet :P.
 typedef enum mTCPReturnCodes {
   SUCCESS, PARSEENV_FAILURE, ALLOCATION_FAILURE, TARGET_INACCESSIBLE,
-  REMOTE_CLOSED_EARLY, REMOTE_CONNECTION_DIED, BAD_STATE, ACCESS_DENIED,
-  RETRY_COUNT_EXCEEDED, REMOTE_TIMEOUT, TARGET_MKDIR_FAILED, TARGET_NOEXIST,
-  TARGET_EXIST, LOCAL_FILE_NOEXIST, LOCAL_FILE_ERROR, USER_SIGNAL,
-  TARGET_SEND_FAILED, SYNC_ERROR
+  REMOTE_CLOSED_EARLY, BAD_STATE, ACCESS_DENIED, REMOTE_TIMEOUT, 
+  TARGET_MKDIR_FAILED, TARGET_NOEXIST, TARGET_EXIST, USER_SIGNAL,
+  TARGET_SEND_FAILED, TARGET_RCV_FAILED, SYNC_ERROR, TARGET_BUSY, 
+  TARGET_REQUEST_MORE_DATA, TARGET_STILL_HAS_DATA
 } nwBackupCodes;
 
+typedef void * nwFileHandle;
 
 //Other stuff
 enum progMode {
@@ -50,7 +51,14 @@ enum pollStatus {
 nwBackupCodes initRemote(nwBackupParms *);
 nwBackupCodes mkDirRemote(char * dirName);
 nwBackupCodes chDirRemote(char * dirName);
-nwBackupCodes openAndSendFile(char * remoteFileName, char * localFileName);
+nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode);
+nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsSent);
+nwBackupCodes rcvDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsRcvd);
+nwBackupCodes closeRemoteFile(nwFileHandle fp);
+
+//nwBackupCodes openAndSendFile(char * remoteFileName, char * localFileName);
+//nwBackupCodes writeAndReceiveFile(char * remoteFileName, char * localFileName);
+void abortXfer();
 void closeRemote();
 
 

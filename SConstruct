@@ -21,8 +21,8 @@ env['MEMMODEL16'] = 'L'
 env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
 env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
 env.Append(CPPPATH = [Dir('#'), tcp_inc_dir]) 
-env.Append(CCFLAGS = '-w=2 -bt=dos -d2 -ecw')
-env.Append(LINKFLAGS = 'system dos debug all')
+env.Append(CCFLAGS = '-w=2 -od -bt=dos -d2 -ecw')
+env.Append(LINKFLAGS = 'system dos debug all option stack=4096')
 	
 #env.Append(CCFLAGS = '--pedantic')
 	
