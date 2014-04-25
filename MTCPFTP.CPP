@@ -79,12 +79,12 @@ enum initState {
 };
 
 enum sendState {
-  
+
 };
 
 /* enum mTCPRc
 {
-  INTERNAL_SUCCESS, 
+  INTERNAL_SUCCESS,
 }mTCPRc_t; */
 
 //Function declarations
@@ -94,11 +94,11 @@ enum sendState {
 //uint16_t pollSocket( TcpSocket *s, uint8_t * buffer, uint16_t currOffset, uint16_t maxSize, uint32_t timeout );
 
 int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, \
-  uint16_t maxSize, uint32_t timeout, uint16_t * retVal, char ** afterRetCode);
+                             uint16_t maxSize, uint32_t timeout, uint16_t * retVal, char ** afterRetCode);
 int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, \
-  uint16_t maxSize, uint32_t timeout );
+                          uint16_t maxSize, uint32_t timeout );
 int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
-  char ** afterRetVal, int8_t * multiLine);
+                           char ** afterRetVal, int8_t * multiLine);
 int8_t findNextLineBreak(uint8_t ** buf, uint16_t * offsetFromEnd);
 
 void readConfigParms( nwBackupParms * );
@@ -235,90 +235,86 @@ nwBackupCodes initRemote(nwBackupParms * parms) {
     fprintf( stderr, "Connected!\n\n" );
     currState = OPEN_SERVER;
   }
-  
+
   //int8_t rc = 0;
   //int8_t done = 0;
   uint16_t ftpReturnVal = 0;
   uint16_t charsRc = 0;
   char ** afterRetCode = NULL;
-  
-  do
-  {
+
+  do {
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-      CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
-    
-    if(rc == 0)
-    {
-      //Do nothing 
+
+    if(rc == 0) {
+      //Do nothing
     }
-    else if(rc == -1)
-    {
+    else if(rc == -1) {
       finalRc = REMOTE_CLOSED_EARLY;
       break;
     }
-    else if(rc == -2)
-    {
+    else if(rc == -2) {
       finalRc = REMOTE_TIMEOUT;
       break;
     }
-    else if(rc == -3)
-    {
+    else if(rc == -3) {
       finalRc = SYNC_ERROR;
       break;
     }
-    
+
     switch(currState) {
-      case OPEN_SERVER:
-        if(ftpReturnVal != 220) {
-          fprintf(stderr, "\nTarget is not accessible.\nBackup aborted.");
-          finalRc = TARGET_INACCESSIBLE;
-          done = 1;
-        }
-        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "USER", parms->Username);
-        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-        currState = SEND_USER;
-        break;
-      case SEND_USER:
-        if(ftpReturnVal != 331) {
-          //fprintf(stderr, "Return val: %d", return_val);
-          fprintf( stderr, "\nServer says the username is bad. \nNot continuing." );
-          finalRc = ACCESS_DENIED;
-          done = 1;
-        }
-        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PASS", parms->Password);
-        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-        currState = SEND_PASS;
-        break;
-      case SEND_PASS:
-        if(ftpReturnVal != 230) {
-          //fprintf(stderr, "Return val: %d != 230", return_val);
-          fprintf(stderr, "\nServer says the password is bad. \nNot continuing." );
-          finalRc = ACCESS_DENIED;
-          done = 1;
-        }
-        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "CWD", parms->RootDir);
-        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-        currState = CHDIR_BACKUP_ROOT;
-        break;
-      case CHDIR_BACKUP_ROOT:
-        if(ftpReturnVal != 250) {
-          finalRc = TARGET_INACCESSIBLE;
-          done = 1;
-        }
-        else {
-          finalRc = SUCCESS; // We are good if we get here, and can continue.
-          done = 1;
-        }
-        break;
-      default:
-        done = 1; //Precaution
-        break;
+    case OPEN_SERVER:
+      if(ftpReturnVal != 220) {
+        fprintf(stderr, "\nTarget is not accessible.\nBackup aborted.");
+        finalRc = TARGET_INACCESSIBLE;
+        done = 1;
       }
+      currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "USER", parms->Username);
+      ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+      currState = SEND_USER;
+      break;
+    case SEND_USER:
+      if(ftpReturnVal != 331) {
+        //fprintf(stderr, "Return val: %d", return_val);
+        fprintf( stderr, "\nServer says the username is bad. \nNot continuing." );
+        finalRc = ACCESS_DENIED;
+        done = 1;
+      }
+      currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PASS", parms->Password);
+      ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+      currState = SEND_PASS;
+      break;
+    case SEND_PASS:
+      if(ftpReturnVal != 230) {
+        //fprintf(stderr, "Return val: %d != 230", return_val);
+        fprintf(stderr, "\nServer says the password is bad. \nNot continuing." );
+        finalRc = ACCESS_DENIED;
+        done = 1;
+      }
+      currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "CWD", parms->RootDir);
+      ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+      currState = CHDIR_BACKUP_ROOT;
+      break;
+    case CHDIR_BACKUP_ROOT:
+      if(ftpReturnVal != 250) {
+        finalRc = TARGET_INACCESSIBLE;
+        done = 1;
+      }
+      else {
+        finalRc = SUCCESS; // We are good if we get here, and can continue.
+        done = 1;
+      }
+      break;
+    default:
+      done = 1; //Precaution
+      break;
+    }
     //Get return code if synchronization not lost, and check if multiline response
     //If multiline response,
-  }while(!done);
-  
+  }
+  while(!done);
+
   return finalRc;
 }
 
@@ -330,57 +326,51 @@ nwBackupCodes mkDirRemote(char * dirName) {
   nwBackupCodes mkDirRc;
   uint16_t currCmdLength;
   char ** afterRetCode;
-  
+
   // Here, we don't WANT any characters to arrive...
   rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, \
-    CTRL_RECV_BUFFER_SIZE, 300);
+                         CTRL_RECV_BUFFER_SIZE, 300);
   //fprintf(stderr, "Rc from getLineFromSocket: %d\n", rc);
-  
-  if(!charsRc)
-  {
+
+  if(!charsRc) {
     //char ** afterRetCode; //This causes a bug which crashes FTPTEST.C... why?
     currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "MKD", dirName);
     ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-    
-  // But, after we send the command, now we do!
+
+    // But, after we send the command, now we do!
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-      CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
-    
-    if(rc == 0)
-    {
-      switch(ftpReturnVal)
-      {
+
+    if(rc == 0) {
+      switch(ftpReturnVal) {
       case 257:
-      	mkDirRc = SUCCESS;
-      	break;
+        mkDirRc = SUCCESS;
+        break;
       case 550:
-      	mkDirRc = TARGET_EXIST;
-      	break;
+        mkDirRc = TARGET_EXIST;
+        break;
       default:
-      	mkDirRc = TARGET_INACCESSIBLE;
+        mkDirRc = TARGET_INACCESSIBLE;
       }
     }
-    else
-    {
-      switch(rc)
-      {
+    else {
+      switch(rc) {
       case -1:
-      	mkDirRc = REMOTE_CLOSED_EARLY;
-      	break;
+        mkDirRc = REMOTE_CLOSED_EARLY;
+        break;
       case -2:
-      	mkDirRc = REMOTE_TIMEOUT;
-      	break;
+        mkDirRc = REMOTE_TIMEOUT;
+        break;
       case -3:
       default:
-      	mkDirRc = SYNC_ERROR;
-      	break;
+        mkDirRc = SYNC_ERROR;
+        break;
       }
     }
   }
-  else
-  {
-    //We weren't expecting characters, but found some anyway!    
+  else {
+    //We weren't expecting characters, but found some anyway!
     mkDirRc = SYNC_ERROR;
   }
   return mkDirRc;
@@ -394,67 +384,61 @@ nwBackupCodes chDirRemote(char * dirName) {
   nwBackupCodes chDirRc;
   uint16_t currCmdLength;
   char ** afterRetCode;
-  
+
   // Here, we don't WANT any characters to arrive...
   rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, \
-    CTRL_RECV_BUFFER_SIZE, 300);
+                         CTRL_RECV_BUFFER_SIZE, 300);
   //fprintf(stderr, "Rc from getLineFromSocket: %d\n", rc);
-  
-  if(!charsRc)
-  {
+
+  if(!charsRc) {
     //char ** afterRetCode; //This causes a bug which crashes FTPTEST.C... why?
     currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "CWD", dirName);
     ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-    
-  // But, after we send the command, now we do!
+
+    // But, after we send the command, now we do!
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-      CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
-    
-    if(rc == 0)
-    {
-      switch(ftpReturnVal)
-      {
+
+    if(rc == 0) {
+      switch(ftpReturnVal) {
       case 250:
-      	chDirRc = SUCCESS;
-      	  //For convenience, print working directory... assume it will not fail
-      	  //if it does, we'll live...
-      	  //Print/write happens in pollSocketAndGetFTPRc
-      	  currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PWD", NULL);
-          ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
-          pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-            CTRL_RECV_BUFFER_SIZE, 1000, &ftpReturnVal, afterRetCode);
-      	
-      	break;
+        chDirRc = SUCCESS;
+        //For convenience, print working directory... assume it will not fail
+        //if it does, we'll live...
+        //Print/write happens in pollSocketAndGetFTPRc
+        currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PWD", NULL);
+        ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
+        pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
+                              CTRL_RECV_BUFFER_SIZE, 1000, &ftpReturnVal, afterRetCode);
+
+        break;
       default:
-      	chDirRc = TARGET_INACCESSIBLE;
-      	break;
+        chDirRc = TARGET_INACCESSIBLE;
+        break;
       }
     }
-    else
-    {
-      switch(rc)
-      {
+    else {
+      switch(rc) {
       case -1:
-      	chDirRc = REMOTE_CLOSED_EARLY;
-      	break;
+        chDirRc = REMOTE_CLOSED_EARLY;
+        break;
       case -2:
-      	chDirRc = REMOTE_TIMEOUT;
-      	break;
+        chDirRc = REMOTE_TIMEOUT;
+        break;
       case -3:
       default:
-      	chDirRc = SYNC_ERROR;
-      	break;
+        chDirRc = SYNC_ERROR;
+        break;
       }
     }
   }
-  else
-  {
+  else {
     //We weren't expecting characters, but found some anyway!
-    //write(1, cmdResponseBuffer, charsRc); 
+    //write(1, cmdResponseBuffer, charsRc);
     //chDirRc = SYNC_ERROR;
   }
-  return chDirRc;  
+  return chDirRc;
 }
 
 
@@ -470,49 +454,41 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
   char * commands[2] = {"STOR", "RETR"};
   //uint16_t pasv_port;
   //IpAddr_t pasvAddr;
-  
-  if(mode == 0 || mode == 1)
-  {
+
+  if(mode == 0 || mode == 1) {
     fp = NULL;
     // Here, we don't WANT any characters to arrive...
     rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, \
-      CTRL_RECV_BUFFER_SIZE, 300);
-    if(!charsRc)
-    {
+                           CTRL_RECV_BUFFER_SIZE, 300);
+    if(!charsRc) {
       //Send PASV Command
       //int8_t done = 0;- More crashes
-      
+
       currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PASV", NULL);
       ctrlSocket->send((uint8_t *) cmdSendBuffer, currCmdLength);
-      rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, 
-        CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
-      
-      if(rc == 0) //This doesn't lend exceptionally well to an FSM...
-      {
+      rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc,
+                                 CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+
+      if(rc == 0) { //This doesn't lend exceptionally well to an FSM...
         uint16_t pasv_port;//- Still more crashes
-       IpAddr_t pasvAddr;
-        
-        if(parsePASVResponse((* afterRetCode), &pasvAddr, &pasv_port))
-        {
+        IpAddr_t pasvAddr;
+
+        if(parsePASVResponse((* afterRetCode), &pasvAddr, &pasv_port)) {
           fprintf(stderr, "Attempt to get passive port failed.\n Not continuing. \n");
           openRc = ACCESS_DENIED;
         }
-        else 
-        {
+        else {
           fprintf(stderr, "Pasv Address: %d,%d,%d,%d Pasv Port: %hi\n", pasvAddr[0],
                   pasvAddr[1], pasvAddr[2], pasvAddr[3], pasv_port);
           rc = openDataSocketPASV(&dataSocket, FILE_BUFFER_SIZE, pasvAddr, pasv_port);
-          if(rc == 0) 
-          {
+          if(rc == 0) {
             //fprintf(stderr, "Passive command okay...\n");
             currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, commands[mode], remoteFileName);
             ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
             rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-              CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
-            if(rc == 0)
-            {
-              switch(ftpReturnVal)
-              {
+                                       CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+            if(rc == 0) {
+              switch(ftpReturnVal) {
               case 150:
                 fp = (void *) (dataSocket);
                 openRc = SUCCESS;
@@ -522,16 +498,13 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
                 break;
               }
             }
-            else if(rc == -1)
-            {
+            else if(rc == -1) {
               openRc = REMOTE_CLOSED_EARLY;
             }
-            else if(rc == -2)
-            {
+            else if(rc == -2) {
               openRc = REMOTE_TIMEOUT;
             }
-            else if(rc == -3)
-            {
+            else if(rc == -3) {
               openRc = SYNC_ERROR;
             }
           }
@@ -545,85 +518,70 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
           }
         }
       }
-      else if(rc == -1)
-      {
+      else if(rc == -1) {
         openRc = REMOTE_CLOSED_EARLY;
       }
-      else if(rc == -2)
-      {
+      else if(rc == -2) {
         openRc = REMOTE_TIMEOUT;
       }
-      else if(rc == -3)
-      {
+      else if(rc == -3) {
         openRc = SYNC_ERROR;
       }
     }
-    else
-    {
+    else {
       openRc = SYNC_ERROR;
     }
   }
-  else
-  {
+  else {
     openRc = ALLOCATION_FAILURE;
   }
   return openRc;
 }
 
-nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsSent)
-{
-  
+nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsSent) {
+
   nwBackupCodes sendRc;
   TcpSocket * dS = (TcpSocket *) fp; //Does nothing for now, just a dummy var.
   DataBuf *buf = NULL;
   uint16_t tempCharsSent = 0;
   uint16_t sendGranularity = (dataSocket->maxEnqueueSize < bufSize) ? \
-    dataSocket->maxEnqueueSize : bufSize; //Use the smaller buffer size.
-  
+                             dataSocket->maxEnqueueSize : bufSize; //Use the smaller buffer size.
+
   /* Well this here isn't really needed, but... */
   PACKET_PROCESS_MULT(5);
   Arp::driveArp( );
   Tcp::drivePackets( );
 
-  if (dataSocket->isRemoteClosed()) 
-  {
-      sendRc = REMOTE_CLOSED_EARLY;
+  if (dataSocket->isRemoteClosed()) {
+    sendRc = REMOTE_CLOSED_EARLY;
   }
-  else
-  {
+  else {
     // Don't bother trying to send packets if we don't have room
     // for new packets in the outgoing queue.
-    if(dataSocket->outgoing.hasRoom()) 
-    {
-      if(CtrlBreakDetected ) 
-      {
+    if(dataSocket->outgoing.hasRoom()) {
+      if(CtrlBreakDetected ) {
         sendRc = USER_SIGNAL;
       }
-      else
-      {
-      // In an ideal world we have already read ahead in the file and filled
-      // a buffer so that it is ready to send immediately.  If a buffer is
-      // not ready then read more data into one now.
+      else {
+        // In an ideal world we have already read ahead in the file and filled
+        // a buffer so that it is ready to send immediately.  If a buffer is
+        // not ready then read more data into one now.
         buf = (DataBuf *) TcpBuffer::getXmitBuf( );
-        if ( buf == NULL ) 
-        {
+        if ( buf == NULL ) {
           sendRc = TARGET_BUSY;
-            // Could not get an outgoing buffer.  It is unlikely that all of them
-            // are in use but if they are, just break out of this loop without
-            // doing anything and it will retry on the next pass.
+          // Could not get an outgoing buffer.  It is unlikely that all of them
+          // are in use but if they are, just break out of this loop without
+          // doing anything and it will retry on the next pass.
         }
-        else
-        {
+        else {
           //memcpy won't fail- well if it does we have a problem that
           //transcends just this application!
           memcpy(buf->data, buffer, sendGranularity);
           buf->b.dataLen = sendGranularity;
-          if (dataSocket->enqueue( &buf->b ))
-          {
+          if (dataSocket->enqueue( &buf->b )) {
             sendRc = REMOTE_CLOSED_EARLY;
           }
-          else
-          {
+          else {
             PACKET_PROCESS_MULT(5);
             Tcp::drivePackets( );
             (* charsSent) = sendGranularity;
@@ -631,69 +589,62 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
           }
         }
       }
-    }  
+    }
   }
   return sendRc;
 }
 
-nwBackupCodes rcvDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsRcvd)
-{ 
+nwBackupCodes rcvDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize, uint16_t * charsRcvd) {
   nwBackupCodes rcvRc;
   TcpSocket * dS = (TcpSocket *) fp; //Does nothing for now, just a dummy var.
   uint16_t tempCharsRcvd = 0;
   int8_t rc;
-  
+
   PACKET_PROCESS_SINGLE;
   Arp::driveArp( );
   Tcp::drivePackets( );
-  
+
   (tempCharsRcvd) = dataSocket->recv(buffer, bufSize);
-  if (dataSocket->isRemoteClosed()) 
-  {
-      /* This works okay because ALL data sockets get the same
-      buffer size */
-      if(tempCharsRcvd >= bufSize)
-      {
-      	rcvRc = TARGET_STILL_HAS_DATA;
-      }
-      else
-      {
-      	rcvRc = SUCCESS;
-      }
+  if (dataSocket->isRemoteClosed()) {
+    /* This works okay because ALL data sockets get the same
+    buffer size */
+    if(tempCharsRcvd >= bufSize) {
+      rcvRc = TARGET_STILL_HAS_DATA;
+    }
+    else {
+      rcvRc = SUCCESS;
+    }
   }
-  else
-  {
+  else {
     rcvRc = TARGET_STILL_HAS_DATA;
   }
-  
+
   (* charsRcvd) = tempCharsRcvd;
   return rcvRc;
 }
 
 
 
-nwBackupCodes closeRemoteFile(nwFileHandle fp)
-{
+nwBackupCodes closeRemoteFile(nwFileHandle fp) {
   int8_t rc;
   uint16_t charsRc;
   uint16_t ftpReturnVal;
   char ** afterRetCode;
   closeAndFreeDataSocket(dataSocket);
   fp = NULL;
-  
+
   // Dummy read
   rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-      CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                             CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
   return SUCCESS;
 }
 
-void abortXfer()
-{
+void abortXfer() {
   uint16_t charsRc;
   uint16_t ftpReturnVal;
   char ** afterRetCode;
   uint16_t currCmdLength;
-  
+
   currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "ABOR", NULL);
   ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
   /* pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
@@ -722,7 +673,7 @@ void closeRemote() {
       write( 1, cmdResponseBuffer, recvRc );
     }
   }
-  
+
   ctrlSocket->close( );
   TcpSocketMgr::freeSocket( ctrlSocket );
   setvect( 0x1b, oldCtrlBreakHandler);
@@ -749,74 +700,70 @@ void closeRemote() {
 
 
 int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, \
-  uint16_t maxSize, uint32_t timeout, uint16_t * retVal, char ** bufAfterRetCode)
-{
+                             uint16_t maxSize, uint32_t timeout, uint16_t * retVal, char ** bufAfterRetCode) {
   //getCommandResponse function?
   int8_t getFTPRc = 0; //This functions rc
   int8_t rc = 0; //Generic rc
   int8_t multiLineResponse = 0;
   int8_t stillPolling = 1;
   (* retVal) = 0; //retVal = 0; creates a null pointer :P...
-  		//of course DOS will happily access the null pointer as if
-  		//nothing's wrong :D!
-  
-  while(stillPolling)
-  {
+  //of course DOS will happily access the null pointer as if
+  //nothing's wrong :D!
+
+  while(stillPolling) {
     rc = getLineFromSocket(s, buffer, charsRcvd, maxSize, timeout);
-    if(rc != -2)
-    {
+    if(rc != -2) {
       write( 1, cmdResponseBuffer, (* charsRcvd));
     }
-    else
-    {
+    else {
       getFTPRc = -2; //Let's try to keep return codes consistent
       break;
     }
-    
+
     //Poll socket will attempt to return a response that ends on a newline.
     //However, it is possible that multiple newlines were embedded in a
     //multiline response. Parse these in case the end of multiline was found.
     uint8_t * bufOffset = buffer;
     uint16_t charsLeft = (* charsRcvd);
     int8_t lineBrkRc = 0;
-    do{
-      	rc = checkforFTPResponse(bufOffset, charsLeft, retVal, \
-      	  bufAfterRetCode, &multiLineResponse);
-    }while(multiLineResponse && findNextLineBreak(&bufOffset, &charsLeft));
+    do {
+      rc = checkforFTPResponse(bufOffset, charsLeft, retVal, \
+                               bufAfterRetCode, &multiLineResponse);
+    }
+    while(multiLineResponse && findNextLineBreak(&bufOffset, &charsLeft));
     //findNextLineBreak only makes sense in the context of a multi-line response...
-    
+
     //fprintf(stderr, "FTP return code: %d\n", (* retVal));
     //fprintf(stderr, "checkforFTPResponse rc: %d\n", rc);
-    
+
     /* if(multiLineResponse)
     {
       //fprintf(stderr, "multiline\n");
     } */
-    switch(rc)
-    {
-      case 2: case 1: 
-      	continue;
-      //These cases need to be handled separately
-      //in reality, but... for now, go with it.
-      case -1: case -2: case -3: 
-      	getFTPRc = -3;
-      	stillPolling = 0;
-      	break;
-      case 0:
-      	getFTPRc = 0;
-      	stillPolling = 0;
-      	break;
-      default:
-	continue;
+    switch(rc) {
+    case 2: case 1:
+      continue;
+    //These cases need to be handled separately
+    //in reality, but... for now, go with it.
+    case -1: case -2: case -3:
+      getFTPRc = -3;
+      stillPolling = 0;
+      break;
+    case 0:
+      getFTPRc = 0;
+      stillPolling = 0;
+      break;
+    default:
+      continue;
     }
-    
+
     if ( ctrlSocket->isRemoteClosed( ) ) {
       getFTPRc = -1;
       break;
     }
   }
-  
-  return getFTPRc; 
+
+  return getFTPRc;
 }
 
 
@@ -826,8 +773,7 @@ int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcv
 //the buffer started in the middle of a response, it will attempt to synchronize
 //to a newline, but other program logic should catch that the program lost
 //synchronization.
-int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, uint16_t maxSize, uint32_t timeout ) 
-{
+int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, uint16_t maxSize, uint32_t timeout ) {
 
   int8_t pollRc = 0;
   uint16_t recvRc = 0;
@@ -846,25 +792,23 @@ int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, 
     if ( rc > -1 ) {
       recvRc += rc;
     }
-    
+
     //If buffer was filled, break.
-    if(recvRc >= maxSize)
-    {
+    if(recvRc >= maxSize) {
       //fprintf(stderr, "TOO LONG!\n");
       pollRc = -1;
       break;
     }
-    
+
     //check whether a line was received. If multiline, keep waiting for full
     //response. If line received, break
-    if(buffer[recvRc - 2] == '\r' && buffer[recvRc - 1] == '\n')
-    {
+    if(buffer[recvRc - 2] == '\r' && buffer[recvRc - 1] == '\n') {
       //fprintf(stderr, "NEWLINE!\n");
       pollRc = 0;
       break;
     }
 
-    
+
     uint32_t t_ms = Timer_diff( startTime, TIMER_GET_CURRENT( ) ) * TIMER_TICK_LEN;
 
     // Timeout?
@@ -881,46 +825,39 @@ int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, 
 
 //Modified from mTCP FTP's processSocketInput function.
 int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
-  char ** afterRetVal, int8_t * multiLine)
-{
+                           char ** afterRetVal, int8_t * multiLine) {
   //buf is a buffer, presumably a line from getLineFromSocket
   //bufSize is the number of chars written.
   //retVal is the parsed FTP return value. For purposes of multiline parsing,
-  	//it should be also used as an input
+  //it should be also used as an input
   //afterRetVal returns a pointer to after the response code. Needed for parsing
-  	//the PASV port.
+  //the PASV port.
   //multiLine input is set when we are in the middle of parsing a multiLine response
-  	//it is an input variable to avoid static state.
-  
+  //it is an input variable to avoid static state.
+
   char retCode[4] = {'\0'};
   int8_t respRc = -1; //Assume not a server response
   uint16_t tempRetVal = 0; //This variable is a guard against loss of synchronization.
   //If a multiline response's final line doesn't match the input retVal, a loss
   //of synchronization occurred. Otherwise, retVal gets set to this without a check.
-  if (bufSiz > 2 ) 
-  {
-    if (isdigit(buf[0]) && isdigit(buf[1]) && isdigit(buf[2])) 
-    {
+  if (bufSiz > 2 ) {
+    if (isdigit(buf[0]) && isdigit(buf[1]) && isdigit(buf[2])) {
       (* afterRetVal) = Utils::getNextToken((char *) buf, retCode, 4 );
       tempRetVal = atoi(retCode);
-      
+
       // Great, it's a server response.
-      if((bufSiz > 3) && (buf[3] == '-') ) 
-      {
+      if((bufSiz > 3) && (buf[3] == '-') ) {
         // Multi-line reponse
         (* multiLine) = 1;
         respRc = 1;
       }
-      else 
-      {
+      else {
         // Normal return code or end of a multiline response.
         respRc = 0; //Assume everything's ok...
-        
-        if((* multiLine)) //If we were in multiline mode
-        {
+
+        if((* multiLine)) { //If we were in multiline mode
           (* multiLine) = 0; //Get out
-          if((* retVal) != tempRetVal) //And perform a sanity check
-          {
+          if((* retVal) != tempRetVal) { //And perform a sanity check
             respRc = -3; //Server and client lost synchronization
             //if initial return code and the multiline end return code differ!
             //Note that retVal will be set to tempRetVal even if we get here...
@@ -930,22 +867,19 @@ int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
       }
       (* retVal) = tempRetVal;
     }
-    else
-    {
-        if ((* multiLine)) 
-        {
-          respRc = 2; //Lines not beginning with numbers
-          //okay in multiline response (will happen on buffer full,
-          //for instance).
-    	}
+    else {
+      if ((* multiLine)) {
+        respRc = 2; //Lines not beginning with numbers
+        //okay in multiline response (will happen on buffer full,
+        //for instance).
+      }
     }
   }
-  else 
-  {
+  else {
     respRc = -2; //Response too short.
   }
   return respRc;
-  
+
   //Return vals:
   //2: Continuation of multiline
   //1: Start of multiline
@@ -962,30 +896,28 @@ int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
 //probably indicates a sync error.
 //This function modifies data in place, hence passing by reference.
 //This is based off of mTCP FTP's getLineFromInBuf without the memmoves...
-int8_t findNextLineBreak(uint8_t ** buf, uint16_t * offsetFromEnd)
-{
+int8_t findNextLineBreak(uint8_t ** buf, uint16_t * offsetFromEnd) {
   uint16_t i = 0;
   uint16_t currOffset = (* offsetFromEnd);
-  while(currOffset > 2 && !((* buf)[i] == '\r' &&  (* buf)[i + 1] == '\n'))
-  {
+  while(currOffset > 2 && !((* buf)[i] == '\r' &&  (* buf)[i + 1] == '\n')) {
     i++;
     currOffset--;
   }
-  
+
   (* buf) = (* buf) + i + 2;
   (* offsetFromEnd) = currOffset;
-  
+
   return currOffset > 2 ? 1 : 0;
-  
+
   //Doesn't work for some reason...
- /* nextNewlineAtEnd =  (currOffset > 2);
-  if(!nextNewlineAtEnd)
-  {
-    (* buf) = (* buf) + i + 2;
-    (* offsetFromEnd) = currOffset;
-  }
-  
-  return nextNewlineAtEnd; */
+  /* nextNewlineAtEnd =  (currOffset > 2);
+   if(!nextNewlineAtEnd)
+   {
+     (* buf) = (* buf) + i + 2;
+     (* offsetFromEnd) = currOffset;
+   }
+
+   return nextNewlineAtEnd; */
 }
 
 
@@ -1107,7 +1039,7 @@ static void closeAndFreeDataSocket( TcpSocket * s ) {
 
 
 //checkForUnexpectedResponse //poll until timeout... if even partial response,
-	//wait until full response arrives after timeout.
+//wait until full response arrives after timeout.
 //handleUnexpectedResponse(currState, retCode)
 
 

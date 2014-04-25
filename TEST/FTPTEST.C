@@ -23,7 +23,7 @@ int main(int argc, char * argv[]) {
   long int chars_read = 0;
   unsigned short short_chars_read = 0;
   char * retr_buffer;
-  
+
 
   if(argc < 2) {
     fprintf(stderr, "Please specify a backup directory name for the server!\n");
@@ -62,38 +62,38 @@ int main(int argc, char * argv[]) {
 
   rc = mkDirRemote(argv[1]);
   fprintf(stderr, "Mkdir return code was: %d\n", rc);
-  
+
   rc = chDirRemote(argv[1]);
   fprintf(stderr, "Chdir return code was: %d\n", rc);
-  
+
   rc = openRemoteFile(nwFp, tempfile, 0);
   fprintf(stderr, "Open TX return code was: %d, void pointer lives at: %Fp\n", rc, nwFp);
   sprintf(serverFilePath, "%s/%s", argv[1], tempfile);
-  
+
   //fprintf(stderr, "Aborting Xfer...\n");
   //abortXfer();
-  
+
   fprintf(stderr, "Storing %s to %s on server...\n", tempfile, argv[1]);
   rc = sendDataRemote(nwFp, (uint8_t *) temp_format_str, sizeof(temp_format_str), &chars_written);
   fprintf(stderr, "Store return code was: %d. %d bytes were sent.\n", rc, chars_written);
-  
+
   rc = closeRemoteFile(nwFp);
   fprintf(stderr, "%s was closed on the remote side\n", tempfile);
-  
-  
+
+
   rc = chDirRemote("..");
   fprintf(stderr, "Chdir up return code was: %d\n", rc);
-  
+
   rc = openRemoteFile(nwFp, serverFilePath, 1);
   fprintf(stderr, "Open RX return code was: %d, void pointer lives at: %Fp\n", rc, nwFp);
-  
+
   retr_buffer = malloc(sizeof(temp_format_str));
   rc = rcvDataRemote(nwFp, (uint8_t *) retr_buffer, sizeof(temp_format_str), &short_chars_read);
   fprintf(stderr, "Receive return code was: %d. %d bytes were sent.\n", rc, short_chars_read);
   fprintf(stderr, "Message received: %s\n", retr_buffer);
 
   closeRemote();
-  
+
   free(retr_buffer);
   remove(tempfile);
   fprintf(stderr, "A temp file was removed: %s\n", tempfile);
