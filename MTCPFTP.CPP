@@ -452,8 +452,8 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
   uint16_t currCmdLength;
   char ** afterRetCode;
   char * commands[2] = {"STOR", "RETR"};
-  //uint16_t pasv_port;
-  //IpAddr_t pasvAddr;
+  uint16_t pasv_port;
+  IpAddr_t pasvAddr;
 
   if(mode == 0 || mode == 1) {
     fp = NULL;
@@ -470,9 +470,9 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
                                  CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
 
       if(rc == 0) { //This doesn't lend exceptionally well to an FSM...
-        uint16_t pasv_port;//- Still more crashes
-        IpAddr_t pasvAddr;
-
+        //uint16_t pasv_port;//- Still more crashes
+        //IpAddr_t pasvAddr;
+        fprintf(stderr, "We got here1\n");
         if(parsePASVResponse((* afterRetCode), &pasvAddr, &pasv_port)) {
           fprintf(stderr, "Attempt to get passive port failed.\n Not continuing. \n");
           openRc = ACCESS_DENIED;
@@ -576,6 +576,8 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
         else {
           //memcpy won't fail- well if it does we have a problem that
           //transcends just this application!
+          /* fprintf(stderr, "dataSocket->maxEnqueueSize: %d, bufSize: %d, sendGranularity: %d\n", \
+            dataSocket->maxEnqueueSize, bufSize, sendGranularity); */
           memcpy(buf->data, buffer, sendGranularity);
           buf->b.dataLen = sendGranularity;
           if (dataSocket->enqueue( &buf->b )) {
@@ -965,7 +967,7 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * PasvAddr, uint16_t * PasvPort ) 
   // Find first digit.  This should be the start of the IP addr and port
   // string.
   //Of course, this assumes the server return code was already parsed.- W. Jones
-
+  fprintf(stderr, "We got here2\n");
   uint8_t found = 0;
   while ( *pos ) {
     if ( isdigit( *pos ) ) {

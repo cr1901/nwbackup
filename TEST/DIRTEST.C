@@ -127,6 +127,7 @@ int main(int argc, char * argv[]) {
     only execute when a parent directory has finished traversal at
     the same time as its child(ren). */
     //j = 0;
+    //getchar();
     while(getNextFile(&currDir, &currFile) && !allDirsTraversed) {
       /* if(j > 0)
       {

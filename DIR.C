@@ -104,6 +104,21 @@ int8_t popDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
   s->pathName[s->pathSplits[s->nextEntry]] = '\0';
   strcpy(pathName, s->pathName); /* Again, we've already verified that
 		paths are okay, so strcpy shouldn't be dangerous here */
+		
+  /* If we are back at the root of the path, we want to make sure that
+  any routines which strip the path root don't see any invalid old paths!
+  Such routines may assume the path separator always follows the path root,
+  but in these routines the separator disappears any time we traverse back 
+  up to the path root.
+  Routines which assume the path root separator always exists may 
+  start looking for paths AFTER the path root separator (to save time), 
+  and will "see" the previous stack of paths, minus the path separators, 
+  and mistake the string contents as valid. Adding another null terminator
+  corrects this. (memset 0 may be better).*/
+  if(s->nextEntry <= 1)
+  {
+    pathName[s->pathSplits[s->nextEntry] + 1] = '\0';
+  }
   return 0;
 }
 
