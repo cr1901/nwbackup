@@ -486,6 +486,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     //long test;
     unsigned long total_size = 0;
     unsigned long elapsed_time = 0;
+    unsigned long prev_elapsed = 0;
     
     done_read = 0;
     send_rc = 0;
@@ -514,11 +515,16 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
             //actual_chars_sent = chars_left;
             //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
             total_size += actual_chars_sent;
-            elapsed_time = get_elapsed_time();
             chars_read_since_eof += actual_chars_sent;
-            fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
-              computeRate(total_size, elapsed_time));
             chars_left -= actual_chars_sent;
+            
+            elapsed_time = get_elapsed_time();
+            if(elapsed_time - prev_elapsed > 1000)
+            {
+              prev_elapsed = elapsed_time;
+              fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
+              computeRate(total_size, elapsed_time));
+            }
           }
           
           /* We will break out anyway if send_rc is triggered... */
@@ -537,8 +543,12 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
         send_rc = sendDataRemote(nwFp, out_buffer, chars_read, &actual_chars_sent);
         total_size += actual_chars_sent;
         elapsed_time = get_elapsed_time();
-        fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
-              computeRate(total_size, elapsed_time));
+        if(elapsed_time - prev_elapsed > 1000)
+        {
+          prev_elapsed = elapsed_time;
+	  fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
+		computeRate(total_size, elapsed_time));
+	}
         //send_rc = 0;
         //actual_chars_sent = OUTBUF_SIZE;
         //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
@@ -571,7 +581,8 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
       close_rc = closeRemoteFile(nwFp);
       if(!close_rc && !send_rc)
       {
-      	fprintf(stderr, "File sent okay...\n");
+      	fprintf(stderr, "File sent okay... %lu total bytes sent... %lu B/sec\n", total_size, \
+              computeRate(total_size, elapsed_time));
         remote_rc = 0; /* If we successfully sent the file, we are done. */
       }
       else
