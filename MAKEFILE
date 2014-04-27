@@ -1,7 +1,7 @@
 MODELCHR=L
 MODELSTR=large
 
-MTCPROOT=..\..
+MTCPROOT=F:\Legacy\PC\SOURCE\mTCP-src_2013-05-23
 
 tcp_h_dir = $(MTCPROOT)\TCPINC
 tcp_c_dir = $(MTCPROOT)\TCPLIB

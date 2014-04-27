@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 #include <malloc.h>
 
 #include "dir.h"
@@ -277,6 +278,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     int retry_count;    
     retry_count = 0;
     
+    assert(_heapchk() == _HEAPOK);
     charsCopied = snprintf(path_and_file, DIR_MAX_PATH + 1, "%s\\%s", path, currFile.name);
     if(charsCopied >= DIR_MAX_PATH + 1) {
       traversalError = 1;

@@ -385,7 +385,7 @@ nwBackupCodes chDirRemote(char * dirName) {
   int8_t rc;
   nwBackupCodes chDirRc;
   uint16_t currCmdLength;
-  char ** afterRetCode;
+  char * afterRetCode;
 
   // Here, we don't WANT any characters to arrive...
   rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, \
@@ -399,7 +399,7 @@ nwBackupCodes chDirRemote(char * dirName) {
 
     // But, after we send the command, now we do!
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
 
     if(rc == 0) {
@@ -412,7 +412,7 @@ nwBackupCodes chDirRemote(char * dirName) {
         currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PWD", NULL);
         ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
         pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                              CTRL_RECV_BUFFER_SIZE, 1000, &ftpReturnVal, afterRetCode);
+                              CTRL_RECV_BUFFER_SIZE, 1000, &ftpReturnVal, &afterRetCode);
 
         break;
       default:
