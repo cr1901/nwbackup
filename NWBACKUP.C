@@ -8,7 +8,8 @@
 #include "dir.h"
 #include "nwbackup.h"
 
-#define FILE_BUF_SIZE 8192
+//#define FILE_BUF_SIZE 8192
+#define FILE_BUF_SIZE 4096
 //#define OUTBUF_SIZE BUFSIZ*8 //Cripples performance...
 #define OUTBUF_SIZE BUFSIZ
 
@@ -21,7 +22,7 @@ typedef signed char (* nw_algorithm)(nwBackupParms *, char *, char *, char *);
 signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile_name);
 signed char do_diff(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile_name);
 signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile_name);
-int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer);
+int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buf, uint16_t payload_size);
 int check_heap( void );
 void print_banner();
 void print_usage();
@@ -378,7 +379,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
       else
       {
       	int8_t local_error = 0;
-        //setvbuf(currFp, file_buffer, _IOFBF, 4096);
+        setvbuf(currFp, file_buffer, _IOFBF, FILE_BUF_SIZE);
         fprintf(stderr, "NW: Storing file %s...\n", unix_path_and_file);
         
         done = 0;
@@ -390,7 +391,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
             fprintf(stderr, "NW: Retrying operation...\n");
           }
           
-          send_remote_rc = send_file(currFp, unix_path_and_file, file_buffer);
+          send_remote_rc = send_file(currFp, unix_path_and_file, out_buffer, OUTBUF_SIZE);
           switch(send_remote_rc)
           {
           case 0:
@@ -467,7 +468,7 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
   return 0;
 }
 
-int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
+int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t payload_size)
 {
   nwFileHandle nwFp = NULL;
   nwBackupCodes open_rc; 
@@ -496,10 +497,10 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     start_timer();
     while(!done_read && (send_rc == SUCCESS || send_rc == TARGET_BUSY)  && !local_file_error)
     {
-      chars_read = fread(out_buffer, 1, OUTBUF_SIZE, fp);
+      chars_read = fread(out_buffer, 1, payload_size, fp);
       //fprintf(stderr, "%d chars read\n", chars_read);
       
-      if(chars_read < OUTBUF_SIZE) /* Send the remaining characters... */
+      if(chars_read < payload_size) /* Send the remaining characters... */
       {
         if(feof(fp))
         {
@@ -550,13 +551,13 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
 		computeRate(total_size, elapsed_time));
 	}
         //send_rc = 0;
-        //actual_chars_sent = OUTBUF_SIZE;
+        //actual_chars_sent = payload_size;
         //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
         if(actual_chars_sent < chars_read) /* This is okay, and will happen sometimes... */
         {
           /* Barring transient errors, this cast should aways work...
           chars_sent will likely not be > 536 and chars_read is bounded by
-          OUTBUF_SIZE. */
+          payload_size. */
           
           fseek(fp, (long) ((short) actual_chars_sent - (short) chars_read), SEEK_CUR);
           

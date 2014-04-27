@@ -22,7 +22,11 @@ env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
 env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"'), 'NDEBUG'])
 #env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
 env.Append(CPPPATH = [Dir('#'), tcp_inc_dir]) 
+#compile_options = -0 $(memory_model) -DCFG_H="ftp.cfg" -oh -ok -ot -s -oa -ei -zp2 -zpw -we -ob -ol+ -oi+
+#/onatx /oh /oi+ /ei /zp8 /0 /fpi87
+
 env.Append(CCFLAGS = '-w=2 -od -bt=dos -d2 -ecw')
+#env.Append(CCFLAGS = '-0 -w=2 -oh -ok -ot -s -oa -ol+ -ei -zp2 -bt=dos -ecw', CFLAGS= '-oi', CXXFLAGS = '-oi+')
 env.Append(LINKFLAGS = 'system dos debug all option stack=4096')
 	
 #env.Append(CCFLAGS = '--pedantic')
