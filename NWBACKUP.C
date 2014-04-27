@@ -2,12 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <malloc.h>
 
 #include "dir.h"
 #include "nwbackup.h"
 
 #define FILE_BUF_SIZE 8192
-#define OUTBUF_SIZE BUFSIZ
+#define OUTBUF_SIZE BUFSIZ*8
 
 typedef signed char (* nw_algorithm)(nwBackupParms *, char *, char *, char *);
 
@@ -15,6 +16,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
 signed char do_diff(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile_name);
 signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile_name);
 int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer);
+int check_heap( void );
 void print_banner();
 void print_usage();
 
@@ -157,6 +159,8 @@ int main(int argc, char * argv[]) {
   }
 }
 
+
+char * dummy_outbuf;
 signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile)
 {
   char ctrl_file[L_tmpnam];
@@ -185,6 +189,8 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   path = malloc(129 * 4);
   file_buffer = malloc(FILE_BUF_SIZE);
   out_buffer = malloc(OUTBUF_SIZE);
+  //dummy_outbuf = calloc(OUTBUF_SIZE, 1);
+  
   if(path == NULL || file_buffer == NULL || out_buffer == NULL)
   {
     fprintf(stderr, "Could not allocate memory for path or file buffers!\n");
@@ -364,7 +370,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
       else
       {
       	int8_t local_error = 0;
-        setvbuf(currFp, file_buffer, _IOFBF, 4096);
+        //setvbuf(currFp, file_buffer, _IOFBF, 4096);
         fprintf(stderr, "NW: Storing file %s...\n", unix_path_and_file);
         
         done = 0;
@@ -463,6 +469,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
   
   if(!open_rc) /* If we opened the file ok, read it to the remote */
   {
+    nwBackupCodes close_rc;
     nwBackupCodes send_rc;
     uint16_t chars_read;
     int8_t done_read;
@@ -478,20 +485,24 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     {
       chars_read = fread(out_buffer, 1, OUTBUF_SIZE, fp);
       //fprintf(stderr, "%d chars read\n", chars_read);
+      
       if(chars_read < OUTBUF_SIZE) /* Send the remaining characters... */
       {
         if(feof(fp))
         {
           uint16_t chars_left = chars_read;
+          uint16_t chars_read_since_eof = 0;
           //fprintf(stderr, "EOF: Finish sending characters...");
           //Race condition if (all these) fprintfs and sendDataRemote commented out.
           while(!send_rc && chars_left)
           {
-            send_rc = sendDataRemote(nwFp, out_buffer, chars_left, &actual_chars_sent);
+            //send_rc = sendDataRemote(nwFp, out_buffer, chars_left, &actual_chars_sent);
+            send_rc = sendDataRemote(nwFp, out_buffer + chars_read_since_eof, chars_left, &actual_chars_sent);
             //send_rc = SUCCESS;
-            actual_chars_sent = chars_left;
+            //actual_chars_sent = chars_left;
             //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
             total_size += actual_chars_sent;
+            chars_read_since_eof += actual_chars_sent;
             //fprintf(stderr, "%lu total bytes sent...\r", total_size);
             chars_left -= actual_chars_sent;
           }
@@ -519,7 +530,9 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
           /* Barring transient errors, this cast should aways work...
           chars_sent will likely not be > 536 and chars_read is bounded by
           OUTBUF_SIZE. */
+          
           fseek(fp, (long) ((short) actual_chars_sent - (short) chars_read), SEEK_CUR);
+          
           /* Just reset the file pointer back the number of characters that
           weren't sent */
           
@@ -537,7 +550,6 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     
     if(!local_file_error)
     {
-      nwBackupCodes close_rc;
       /* We should close the file even if send_rc errored out! */
       close_rc = closeRemoteFile(nwFp);
       if(!close_rc && !send_rc)
@@ -553,6 +565,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     }
     else
     {
+      close_rc = closeRemoteFile(nwFp);
       remote_rc = -2; /* Do not retry transfer. */
     }
   }
@@ -581,4 +594,29 @@ void print_usage()
     "  [-d | -f]: Differential or full backup (default full).\n" \
     "  -r: Perform restore. Does NOT need to be first argument.\n" \
     "  Default logfile name is [backup_name].LOG.\n");
+}
+
+
+/* Returns non-zero value if heap is corrupted */
+int check_heap( void )
+{
+    int     rc = 0;
+
+    switch( _heapchk() ) {
+    case _HEAPOK:
+        printf( "OK - heap is good\n" );
+        break;
+    case _HEAPEMPTY:
+        printf( "OK - heap is empty\n" );
+        break;
+    case _HEAPBADBEGIN:
+        printf( "ERROR - heap is damaged\n" );
+        rc = -1;
+        break;
+    case _HEAPBADNODE:
+        printf( "ERROR - bad node in heap\n" );
+        rc = -1;
+        break;
+    }
+    return( rc );
 }

@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
+#include <malloc.h>
 
 //DOS headers
 #include <bios.h>
@@ -240,11 +242,11 @@ nwBackupCodes initRemote(nwBackupParms * parms) {
   //int8_t done = 0;
   uint16_t ftpReturnVal = 0;
   uint16_t charsRc = 0;
-  char ** afterRetCode = NULL;
+  char * afterRetCode = NULL;
 
   do {
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
 
     if(rc == 0) {
@@ -325,7 +327,7 @@ nwBackupCodes mkDirRemote(char * dirName) {
   int8_t rc;
   nwBackupCodes mkDirRc;
   uint16_t currCmdLength;
-  char ** afterRetCode;
+  char * afterRetCode;
 
   // Here, we don't WANT any characters to arrive...
   rc = getLineFromSocket(ctrlSocket, cmdResponseBuffer, &charsRc, \
@@ -339,7 +341,7 @@ nwBackupCodes mkDirRemote(char * dirName) {
 
     // But, after we send the command, now we do!
     rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                               CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
     //(stderr, "FTP Return val outside pollSocket...: %d\n", ftpReturnVal);
 
     if(rc == 0) {
@@ -450,7 +452,7 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
   int8_t rc;
   nwBackupCodes openRc;
   uint16_t currCmdLength;
-  char ** afterRetCode;
+  char * afterRetCode = NULL;
   char * commands[2] = {"STOR", "RETR"};
   uint16_t pasv_port;
   IpAddr_t pasvAddr;
@@ -466,15 +468,18 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
 
       currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "PASV", NULL);
       ctrlSocket->send((uint8_t *) cmdSendBuffer, currCmdLength);
+      //fprintf(stderr, "cmdSendBuffer contents: %s\n", cmdSendBuffer);
+      assert(&afterRetCode != NULL);
       rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc,
-                                 CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                                 CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
 
       if(rc == 0) { //This doesn't lend exceptionally well to an FSM...
         //uint16_t pasv_port;//- Still more crashes
         //IpAddr_t pasvAddr;
-        fprintf(stderr, "We got here1\n");
-        if(parsePASVResponse((* afterRetCode), &pasvAddr, &pasv_port)) {
-          fprintf(stderr, "Attempt to get passive port failed.\n Not continuing. \n");
+        //fprintf(stderr, "We got here1\n");
+        rc = parsePASVResponse(afterRetCode, &pasvAddr, &pasv_port);
+        if(rc) {
+          fprintf(stderr, "Attempt to get passive port failed (%d).\n Not continuing. \n", rc);
           openRc = ACCESS_DENIED;
         }
         else {
@@ -486,7 +491,7 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
             currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, commands[mode], remoteFileName);
             ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
             rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                                       CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                                       CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
             if(rc == 0) {
               switch(ftpReturnVal) {
               case 150:
@@ -549,9 +554,12 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
 
   /* Well this here isn't really needed, but... */
   PACKET_PROCESS_MULT(5);
+  //fprintf(stderr, "Data PACKET_MULT okay...\n");
   Arp::driveArp( );
+  //fprintf(stderr, "Data driveArp okay...\n");
   Tcp::drivePackets( );
-
+  //fprintf(stderr, "Data drivePackets okay...\n");  
+  
   if (dataSocket->isRemoteClosed()) {
     sendRc = REMOTE_CLOSED_EARLY;
   }
@@ -568,6 +576,7 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
         // not ready then read more data into one now.
         buf = (DataBuf *) TcpBuffer::getXmitBuf( );
         if ( buf == NULL ) {
+          fprintf(stderr, "We ran out of Data buffers... wait!\n");
           sendRc = TARGET_BUSY;
           // Could not get an outgoing buffer.  It is unlikely that all of them
           // are in use but if they are, just break out of this loop without
@@ -585,9 +594,14 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
           }
           else {
             PACKET_PROCESS_MULT(5);
+            //fprintf(stderr, "Data PACKET_MULT2 okay...\n");
             Tcp::drivePackets( );
+            //fprintf(stderr, "Data drivePackets2 okay...\n");  
             (* charsSent) = sendGranularity;
             sendRc = SUCCESS;
+            
+
+
           }
         }
       }
@@ -631,13 +645,13 @@ nwBackupCodes closeRemoteFile(nwFileHandle fp) {
   int8_t rc;
   uint16_t charsRc;
   uint16_t ftpReturnVal;
-  char ** afterRetCode;
+  char * afterRetCode;
   closeAndFreeDataSocket(dataSocket);
   fp = NULL;
 
   // Dummy read
   rc = pollSocketAndGetFTPRc(ctrlSocket, cmdResponseBuffer, &charsRc, \
-                             CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, afterRetCode);
+                             CTRL_RECV_BUFFER_SIZE, 10000, &ftpReturnVal, &afterRetCode);
   return SUCCESS;
 }
 
@@ -658,7 +672,8 @@ void closeRemote() {
   //Poll and get remaining contents
   uint16_t currCmdLength;
   int16_t recvRc;
-
+  
+  assert(ctrlSocket != NULL);
   if(!ctrlSocket->isRemoteClosed()) {
     currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "QUIT", NULL);
     ctrlSocket->send( (uint8_t *) cmdSendBuffer, currCmdLength);
@@ -711,11 +726,15 @@ int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcv
   (* retVal) = 0; //retVal = 0; creates a null pointer :P...
   //of course DOS will happily access the null pointer as if
   //nothing's wrong :D!
+  assert(retVal != NULL);
+  assert(charsRcvd != NULL);
+  assert(buffer == cmdResponseBuffer);
 
   while(stillPolling) {
     rc = getLineFromSocket(s, buffer, charsRcvd, maxSize, timeout);
     if(rc != -2) {
-      write( 1, cmdResponseBuffer, (* charsRcvd));
+      //write( 1, cmdResponseBuffer, (* charsRcvd));
+      write( 1, buffer, (* charsRcvd));
     }
     else {
       getFTPRc = -2; //Let's try to keep return codes consistent
@@ -729,6 +748,7 @@ int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcv
     uint16_t charsLeft = (* charsRcvd);
     int8_t lineBrkRc = 0;
     do {
+      assert(bufAfterRetCode != NULL);
       rc = checkforFTPResponse(bufOffset, charsLeft, retVal, \
                                bufAfterRetCode, &multiLineResponse);
     }
@@ -782,18 +802,29 @@ int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, 
   int8_t checkForMultiLine = 0;
   int8_t multiLine = 0;
   //return 0; //Bytes read while polling
+  //fprintf(stderr, "Poll started...\n");
   clockTicks_t startTime = TIMER_GET_CURRENT( );
-
+  
   while ( 1 ) {
-
+    
+  assert(s != NULL);
+  assert(buffer != NULL);
+  assert(s == ctrlSocket);
+  assert(buffer == cmdResponseBuffer);
+  assert(charsRcvd != NULL);
+  assert(_heapchk() == _HEAPOK);
     PACKET_PROCESS_SINGLE;
+    //fprintf(stderr, "Packet Process Okay...\n");
     Arp::driveArp( );
+    //fprintf(stderr, "Drive ARP Okay...\n");
     Tcp::drivePackets( );
+    //fprintf(stderr, "Drive Packets Okay...\n");
 
     int rc = s->recv( buffer + recvRc, (maxSize - recvRc) );
     if ( rc > -1 ) {
       recvRc += rc;
     }
+
 
     //If buffer was filled, break.
     if(recvRc >= maxSize) {
@@ -820,6 +851,7 @@ int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, 
     }
 
   }
+  //fprintf(stderr, "Poll finished...: %d\n", pollRc);
   (* charsRcvd) = recvRc;
   return pollRc;
 }
@@ -836,7 +868,9 @@ int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
   //the PASV port.
   //multiLine input is set when we are in the middle of parsing a multiLine response
   //it is an input variable to avoid static state.
-
+  
+  assert(afterRetVal != NULL);
+  //fprintf(stderr, "FTP Response start\n");
   char retCode[4] = {'\0'};
   int8_t respRc = -1; //Assume not a server response
   uint16_t tempRetVal = 0; //This variable is a guard against loss of synchronization.
@@ -880,6 +914,7 @@ int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
   else {
     respRc = -2; //Response too short.
   }
+  //fprintf(stderr, "FTP Response parsed\n");
   return respRc;
 
   //Return vals:
@@ -967,7 +1002,11 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * PasvAddr, uint16_t * PasvPort ) 
   // Find first digit.  This should be the start of the IP addr and port
   // string.
   //Of course, this assumes the server return code was already parsed.- W. Jones
-  fprintf(stderr, "We got here2\n");
+  //fprintf(stderr, "We got here2\n");
+  
+  assert(pos != NULL);
+  assert(PasvAddr != NULL);
+  assert(PasvPort != NULL);
   uint8_t found = 0;
   while ( *pos ) {
     if ( isdigit( *pos ) ) {
