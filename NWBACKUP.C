@@ -9,7 +9,12 @@
 #include "nwbackup.h"
 
 #define FILE_BUF_SIZE 8192
-#define OUTBUF_SIZE BUFSIZ*8
+//#define OUTBUF_SIZE BUFSIZ*8 //Cripples performance...
+#define OUTBUF_SIZE BUFSIZ
+
+extern void start_timer();
+extern uint32_t get_elapsed_time();
+static uint32_t computeRate( uint32_t bytes, uint32_t elapsed );
 
 typedef signed char (* nw_algorithm)(nwBackupParms *, char *, char *, char *);
 
@@ -190,7 +195,8 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   path = malloc(129 * 4);
   file_buffer = malloc(FILE_BUF_SIZE);
   out_buffer = malloc(OUTBUF_SIZE);
-  //dummy_outbuf = calloc(OUTBUF_SIZE, 1);
+  //dummy_outbuf = calloc(OUTBUF_SIZE, 1); //This doesn't set the first and third byte
+  //to zero!
   
   if(path == NULL || file_buffer == NULL || out_buffer == NULL)
   {
@@ -479,11 +485,15 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
     int8_t local_file_error;
     //long test;
     unsigned long total_size = 0;
+    unsigned long elapsed_time = 0;
     
     done_read = 0;
     send_rc = 0;
     local_file_error = 0;
-    while(!done_read && !send_rc && !local_file_error)
+    
+    
+    start_timer();
+    while(!done_read && (send_rc == SUCCESS || send_rc == TARGET_BUSY)  && !local_file_error)
     {
       chars_read = fread(out_buffer, 1, OUTBUF_SIZE, fp);
       //fprintf(stderr, "%d chars read\n", chars_read);
@@ -496,7 +506,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
           uint16_t chars_read_since_eof = 0;
           //fprintf(stderr, "EOF: Finish sending characters...");
           //Race condition if (all these) fprintfs and sendDataRemote commented out.
-          while(!send_rc && chars_left)
+          while((send_rc == SUCCESS || send_rc == TARGET_BUSY) && chars_left)
           {
             //send_rc = sendDataRemote(nwFp, out_buffer, chars_left, &actual_chars_sent);
             send_rc = sendDataRemote(nwFp, out_buffer + chars_read_since_eof, chars_left, &actual_chars_sent);
@@ -504,11 +514,14 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
             //actual_chars_sent = chars_left;
             //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
             total_size += actual_chars_sent;
+            elapsed_time = get_elapsed_time();
             chars_read_since_eof += actual_chars_sent;
-            //fprintf(stderr, "%lu total bytes sent...\r", total_size);
+            fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
+              computeRate(total_size, elapsed_time));
             chars_left -= actual_chars_sent;
           }
           
+          /* We will break out anyway if send_rc is triggered... */
           if(!send_rc)
           {
             done_read = 1;
@@ -523,7 +536,9 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer)
       {
         send_rc = sendDataRemote(nwFp, out_buffer, chars_read, &actual_chars_sent);
         total_size += actual_chars_sent;
-        //fprintf(stderr, "%lu total bytes sent...\r", total_size);
+        elapsed_time = get_elapsed_time();
+        fprintf(stderr, "%lu total bytes sent... %lu B/sec\r", total_size, \
+              computeRate(total_size, elapsed_time));
         //send_rc = 0;
         //actual_chars_sent = OUTBUF_SIZE;
         //fprintf(stderr, "%d chars sent\n", actual_chars_sent);
@@ -621,4 +636,29 @@ int check_heap( void )
         break;
     }
     return( rc );
+}
+
+
+
+/* Stolen from MTCP FTP... */
+static uint32_t computeRate( uint32_t bytes, uint32_t elapsed ) {
+
+  uint32_t rate;
+
+  if ( elapsed == 0 ) elapsed = 55;
+
+  if ( bytes < 2000000ul ) {
+    rate = (bytes * 1000) / elapsed;
+  }
+  else if ( bytes < 20000000ul ) {
+    rate = (bytes * 100) / (elapsed/10);
+  }
+  else if ( bytes < 200000000ul ) {
+    rate = (bytes * 10) / (elapsed/100);
+  }
+  else {
+    rate = bytes / (elapsed / 1000);
+  }
+
+  return rate;
 }

@@ -19,7 +19,8 @@ nwbackup_src = 'NWBACKUP.C DIR.C MTCPFTP.CPP'
 env = Environment(tools = ['watcom'], USEWASM=True)
 env['MEMMODEL16'] = 'L'
 env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
-env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
+env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"'), 'NDEBUG'])
+#env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
 env.Append(CPPPATH = [Dir('#'), tcp_inc_dir]) 
 env.Append(CCFLAGS = '-w=2 -od -bt=dos -d2 -ecw')
 env.Append(LINKFLAGS = 'system dos debug all option stack=4096')

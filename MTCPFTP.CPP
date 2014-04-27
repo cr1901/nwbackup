@@ -38,6 +38,7 @@ extern "C"
 char     PortString[40] = {'\0'},PasvString[40] = {'\0'}; //make union?
 static uint16_t ServerPort, CtrlPort, DataPort, NextDataPort, PassPort; // Only used when we are a client.
 static int8_t   PasvOrPort = 0; //FTP Pasv Xfer = 1, Port Xfer = 0
+clockTicks_t startTicks;
 
 //Sockets
 static TcpSocket *ctrlSocket, *dataSocket = NULL, *listenSocket;
@@ -108,6 +109,11 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * pasvAddr, uint16_t * pasv_port )
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort);
 static void closeAndFreeDataSocket( TcpSocket * s );
 static void shutdown(int rc);
+
+extern "C"{
+void start_timer();
+uint32_t get_elapsed_time();
+}
 
 
 
@@ -1093,6 +1099,17 @@ static void shutdown( int rc ) {
   fclose( TrcStream );
   exit( rc );
 }
+
+
+void start_timer()
+{
+  startTicks = TIMER_GET_CURRENT( );
+}
+uint32_t get_elapsed_time()
+{
+  return (Timer_diff(startTicks, TIMER_GET_CURRENT( )) * TIMER_TICK_LEN);
+}
+
 
 
 
