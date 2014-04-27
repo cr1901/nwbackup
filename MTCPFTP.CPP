@@ -584,6 +584,7 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
         if ( buf == NULL ) {
           fprintf(stderr, "We ran out of Data buffers... wait!\n");
           sendRc = TARGET_BUSY;
+          (* charsSent) = 0;
           // Could not get an outgoing buffer.  It is unlikely that all of them
           // are in use but if they are, just break out of this loop without
           // doing anything and it will retry on the next pass.
