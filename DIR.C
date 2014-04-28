@@ -79,6 +79,16 @@ int8_t pushDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
   /* We want to point at the null terminator for the current string, so
   it can be overwritten when we push another directory. */
   s->pathSplits[s->nextEntry] = pathLen;
+  
+  /* Like in popDir, it is possible for garbage to remain between pushes and
+  pops- assumptions about the existence of a terminator may cause garbage data
+  to be read beyond the NULL terminator. This bug seems to only occur between 
+  program invocations of DIRTEST where CTRL+BREAK was pressed (i.e. the old data
+  was left in memory in the same place). */
+  if(s->nextEntry <= 1)
+  {
+    pathName[s->pathSplits[s->nextEntry] + 1] = '\0';
+  }
 
 
   return 0;

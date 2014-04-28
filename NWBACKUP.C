@@ -316,7 +316,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
       sprintf(unix_path_and_file, "%s/%s", unixPath, currFile.name);
     }
     
-    if(currFile.attrib == (currFile.attrib & _A_SUBDIR)) {
+    if(currFile.attrib & _A_SUBDIR) {
       /* The two relative directories can be safely
       ignored. */
       if(!(strcmp(currFile.name, ".") == 0 \

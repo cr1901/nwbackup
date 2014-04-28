@@ -81,12 +81,23 @@ int main(int argc, char * argv[]) {
       fprintf(stderr, "Unix directory name creation failed!\n");
       return EXIT_FAILURE;
     }
-    printf("  Unix path: %s/%s\n", unixPath, currFile.name);
-    if(currFile.attrib == (currFile.attrib & _A_SUBDIR)) {
+    
+    
+    if(strlen(unixPath) == 0) /* We are back at directory root if here */
+    {
+      printf("  Unix path: %s\n", currFile.name);
+    }
+    else
+    {
+      printf("  Unix path: %s/%s\n", unixPath, currFile.name);
+    }
+    
+    if((currFile.attrib & _A_SUBDIR)) {
       /* The two relative directories can be safely
       ignored. */
       if(!(strcmp(currFile.name, ".") == 0 \
            || strcmp(currFile.name, "..") == 0)) {
+      /* Undefined behavior? */
         charsCopied = snprintf(path, DIR_MAX_PATH + 1, \
                                "%s\\%s", path, currFile.name);
         if(charsCopied >= DIR_MAX_PATH + 1) {
@@ -103,6 +114,7 @@ int main(int argc, char * argv[]) {
 
         if(openDir(path, &currDir, &currFile)) {
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
+          perror("Reason");
           break;
         }
         fprintf(stderr, "\n");
