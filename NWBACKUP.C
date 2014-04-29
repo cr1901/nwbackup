@@ -97,8 +97,8 @@ int main(int argc, char * argv[]) {
           return EXIT_FAILURE;
         case 'l':
           if(i != num_opts_after_hyphen - 1) {
-            printf("Option -l requires an argument, but " \
-                   "was specified as part of options which do not "
+            fprintf(stderr, "Option -l requires an argument, but " \
+                   "was specified as part of options which do not " \
                    "require arguments\n");
             return EXIT_FAILURE;
           }
@@ -117,7 +117,7 @@ int main(int argc, char * argv[]) {
   }
 
   if(argc - count < 2) {
-    printf("Not enough command line parameters (type -h for help)\n");
+    fprintf(stderr, "Not enough command line parameters (type -h for help)\n");
     return EXIT_FAILURE;
   }
 
@@ -136,7 +136,7 @@ int main(int argc, char * argv[]) {
     }
 
 
-    fprintf(stderr, "NW: Backup Params:\n" \
+    fprintf(stderr, "Backup Params:\n" \
             "Mode: %s\nBackup Name: %s\nRoot Dir: %s\nLogfile: %s\n", \
             mode_string[prog_mode], backup_name, start_dir, logfile_name);
 
@@ -186,7 +186,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   //to zero!
 
   if(path == NULL || file_buffer == NULL || out_buffer == NULL) {
-    fprintf(stderr, "NW: Could not allocate memory for path or file buffers!\n");
+    fprintf(stderr, "Could not allocate memory for path or file buffers!\n");
     return -12;
   }
 
@@ -195,21 +195,10 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   path_and_file = path + 129;
   unixPath = path_and_file + 129;
   unix_path_and_file = unixPath + 129;
-  //char * full_server_path;
-  /* rc = sscanf(argv[1], "%c:\\%s", driveLetter[0], path);
-  if(rc < 2)
-  {
-    // Edge case where we only include drive letter.
-    if(rc < 1 || argv[1][1] != ':' || argv[1][2] != '\\' || argv[1][3] != '\0')
-    {
-      fprintf(stderr, "The directory name must be absolute and include the drive letter!\n");
-      return EXIT_FAILURE;
-    }
-  } */
-
+  
 
   if(initDirStack(&dStack)) {
-    fprintf(stderr, "NW: Directory Stack Initialization failed!\n");
+    fprintf(stderr, "Directory Stack Initialization failed!\n");
     return -1;
   }
 
@@ -218,7 +207,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   {
     /* Shouldn't fail... but Heartbleed convinces me to
     code defensively. */
-    fprintf(stderr, "NW: Specified path name is too long...\n"
+    fprintf(stderr, "Specified path name is too long...\n"
             "Actually if we're got this error on DOS, we have more serious\n"
             "trouble than just a bad path!\n");
   }
@@ -234,12 +223,12 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   //full_unix_path = malloc(strlen(parms-> strlen(remote_name) + );
 
   if(traversalError = pushDir(&dStack, &currDir, path)) {
-    fprintf(stderr, "NW: Initial directory push failed!\n");
+    fprintf(stderr, "Initial directory push failed!\n");
     return -2;
   }
 
   if(openDir(path, &currDir, &currFile)) {
-    fprintf(stderr, "NW: Directory open failed!\n");
+    fprintf(stderr, "Directory open failed!\n");
     return -3;
   }
 
@@ -270,7 +259,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     charsCopied = snprintf(path_and_file, DIR_MAX_PATH + 1, "%s\\%s", path, currFile.name);
     if(charsCopied >= DIR_MAX_PATH + 1) {
       traversalError = 1;
-      fprintf(stderr, "NW: Directory traversal error, LINE %u!\n", __LINE__);
+      fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
       do_backup_rc = -8;
       break;
     }
@@ -282,7 +271,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
 
     unixPath[0] = '\0';
     if(createUnixName(unixPath, &path[pathEostr + 1]) == NULL) {
-      fprintf(stderr, "NW: Unix directory name creation failed!\n");
+      fprintf(stderr, "Unix directory name creation failed!\n");
       do_backup_rc = -7;
       break;
     }
@@ -304,21 +293,21 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
         strcpy(path, path_and_file);
         traversalError = pushDir(&dStack, &currDir, path);
         if(traversalError) {
-          fprintf(stderr, "NW: Directory traversal error, LINE %u!\n", __LINE__);
+          fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           do_backup_rc = -9;
           break;
         }
 
         if(openDir(path, &currDir, &currFile)) {
-          fprintf(stderr, "NW: Directory traversal error, LINE %u!\n", __LINE__);
+          fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           do_backup_rc = -10;
           break;
         }
 
-        fprintf(stderr, "NW: Creating directory %s...\n", unix_path_and_file);
+        fprintf(stderr, "Creating directory %s...\n", unix_path_and_file);
         do {
           if(retry_count) {
-            fprintf(stderr, "NW: Retrying operation...\n");
+            fprintf(stderr, "Retrying operation...\n");
           }
           nw_rc = mkDirRemote(unix_path_and_file);
           retry_count++;
@@ -353,13 +342,13 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
       else {
         int8_t local_error = 0;
         setvbuf(currFp, file_buffer, _IOFBF, FILE_BUF_SIZE);
-        fprintf(stderr, "NW: Storing file %s...\n", unix_path_and_file);
+        fprintf(stderr, "Storing file %s...\n", unix_path_and_file);
 
         done = 0;
         while(!done && !local_error && retry_count <= 3) {
           int8_t send_remote_rc;
           if(retry_count) {
-            fprintf(stderr, "NW: Retrying operation...\n");
+            fprintf(stderr, "Retrying operation...\n");
           }
 
           send_remote_rc = send_file(currFp, unix_path_and_file, out_buffer, OUTBUF_SIZE);
@@ -368,7 +357,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
             done = 1;
             break;
           case -2:
-            fprintf(stderr, "NW: Read error on file: %s! Not continuing.", path_and_file);
+            fprintf(stderr, "Read error on file: %s! Not continuing.", path_and_file);
             local_error = 1; /* Local file error. */
             break;
           case -1: /* Recoverable error. */
@@ -392,6 +381,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
       }
       fclose(currFp);
     }
+    fprintf(stderr, "\n");
 
     /* Only perform another iteration of the file loop
     when there is in fact another file to send. If there are no
@@ -411,10 +401,10 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   }
 
   if(do_backup_rc) {
-    fprintf(stderr, "NW: Full backup failed with status code %d.\n", do_backup_rc);
+    fprintf(stderr, "Full backup failed with status code %d.\n", do_backup_rc);
   }
   else {
-    fprintf(stderr, "NW: Full backup completed successfully.\n");
+    fprintf(stderr, "Full backup completed successfully.\n");
   }
   closeRemote();
   return 0;
@@ -472,7 +462,6 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
             total_size += actual_chars_sent;
             chars_read_since_eof += actual_chars_sent;
             chars_left -= actual_chars_sent;
-
             elapsed_time = get_elapsed_time();
             if(elapsed_time - prev_elapsed > 1000) {
               prev_elapsed = elapsed_time;

@@ -10,7 +10,7 @@ mtcp_cpp = 'packet.cpp arp.cpp eth.cpp ip.cpp tcp.cpp ' \
 	'tcpsockm.cpp udp.cpp utils.cpp dns.cpp timer.cpp ipasm.asm'
 
 debug_mode = ARGUMENTS.get('debug', 0)
-nwbackup_src = 'NWBACKUP.C DIR.C MTCPFTP.CPP'
+nwbackup_src = 'NWBACKUP.C DIR.C CONTROL.C MTCPFTP.CPP'
 jsmn_src = 'jsmn.c'
 
 #test_src = [test_dir.File(s) for s in Split('dirtest.c')]
@@ -23,7 +23,7 @@ env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
 env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
 if not debug_mode:
   env.Append(CPPDEFINES = ['NDEBUG'])
-env.Append(CPPPATH = [Dir('#'), tcp_inc_dir]) 
+env.Append(CPPPATH = [Dir('#'), tcp_inc_dir, jsmn_dir]) 
 #compile_options = -0 $(memory_model) -DCFG_H="ftp.cfg" -oh -ok -ot -s -oa -ei -zp2 -zpw -we -ob -ol+ -oi+
 #/onatx /oh /oi+ /ei /zp8 /0 /fpi87
 
@@ -51,9 +51,11 @@ dir_test = env.Program([test_dir.File('dirtest.c'), 'dir.c'])
 mdir_test = env.Program(test_dir.File('mdirtest.c'), CFLAGS=['-Za99'])
 ftp_test = env.Program([test_dir.File('ftptest.c'), 'mtcpftp.cpp'] + mtcp_objs)
 temp_test = env.Program(test_dir.File('tmptest.c'))
+ser_obj = env.Object([test_dir.File('sertest.c'), 'control.c', 'dir.c'])
+ser_test = env.Program(ser_obj, LIBS = 'jsmn')
 #ftpret_test = env.Program([test_dir.File('ftpret.c'), 'mtcpftp.cpp'] + mtcp_objs)
 
-test_exes = [dir_test, mdir_test, ftp_test, temp_test]
+test_exes = [dir_test, mdir_test, ftp_test, temp_test, ser_test]
 env.Alias('test', test_exes)
 env.Alias('all', [nwbackup_exe, test_exes])
 
