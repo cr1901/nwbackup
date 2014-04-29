@@ -13,7 +13,7 @@ typedef struct mTCPBackupParms {
   char Password[80];
   char RootDir[80];
   char BackupMode[8];
-  char TempDir[80];
+  //char TempDir[80];
   char backupDirName[80];
 } nwBackupParms;
 

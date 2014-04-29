@@ -110,9 +110,9 @@ int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, u
 static void closeAndFreeDataSocket( TcpSocket * s );
 static void shutdown(int rc);
 
-extern "C"{
-void start_timer();
-uint32_t get_elapsed_time();
+extern "C" {
+  void start_timer();
+  uint32_t get_elapsed_time();
 }
 
 
@@ -564,8 +564,8 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
   Arp::driveArp( );
   //fprintf(stderr, "Data driveArp okay...\n");
   Tcp::drivePackets( );
-  //fprintf(stderr, "Data drivePackets okay...\n");  
-  
+  //fprintf(stderr, "Data drivePackets okay...\n");
+
   if (dataSocket->isRemoteClosed()) {
     sendRc = REMOTE_CLOSED_EARLY;
   }
@@ -603,10 +603,10 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
             PACKET_PROCESS_MULT(5);
             //fprintf(stderr, "Data PACKET_MULT2 okay...\n");
             Tcp::drivePackets( );
-            //fprintf(stderr, "Data drivePackets2 okay...\n");  
+            //fprintf(stderr, "Data drivePackets2 okay...\n");
             (* charsSent) = sendGranularity;
             sendRc = SUCCESS;
-            
+
 
 
           }
@@ -679,7 +679,7 @@ void closeRemote() {
   //Poll and get remaining contents
   uint16_t currCmdLength;
   int16_t recvRc;
-  
+
   assert(ctrlSocket != NULL);
   if(!ctrlSocket->isRemoteClosed()) {
     currCmdLength = sprintf(cmdSendBuffer, "%s %s" _NL_, "QUIT", NULL);
@@ -811,15 +811,15 @@ int8_t getLineFromSocket( TcpSocket *s, uint8_t * buffer, uint16_t * charsRcvd, 
   //return 0; //Bytes read while polling
   //fprintf(stderr, "Poll started...\n");
   clockTicks_t startTime = TIMER_GET_CURRENT( );
-  
+
   while ( 1 ) {
-    
-  assert(s != NULL);
-  assert(buffer != NULL);
-  assert(s == ctrlSocket);
-  assert(buffer == cmdResponseBuffer);
-  assert(charsRcvd != NULL);
-  assert(_heapchk() == _HEAPOK);
+
+    assert(s != NULL);
+    assert(buffer != NULL);
+    assert(s == ctrlSocket);
+    assert(buffer == cmdResponseBuffer);
+    assert(charsRcvd != NULL);
+    assert(_heapchk() == _HEAPOK);
     PACKET_PROCESS_SINGLE;
     //fprintf(stderr, "Packet Process Okay...\n");
     Arp::driveArp( );
@@ -875,7 +875,7 @@ int8_t checkforFTPResponse(uint8_t * buf, uint16_t bufSiz, uint16_t * retVal, \
   //the PASV port.
   //multiLine input is set when we are in the middle of parsing a multiLine response
   //it is an input variable to avoid static state.
-  
+
   assert(afterRetVal != NULL);
   //fprintf(stderr, "FTP Response start\n");
   char retCode[4] = {'\0'};
@@ -1010,7 +1010,7 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * PasvAddr, uint16_t * PasvPort ) 
   // string.
   //Of course, this assumes the server return code was already parsed.- W. Jones
   //fprintf(stderr, "We got here2\n");
-  
+
   assert(pos != NULL);
   assert(PasvAddr != NULL);
   assert(PasvPort != NULL);
@@ -1102,12 +1102,10 @@ static void shutdown( int rc ) {
 }
 
 
-void start_timer()
-{
+void start_timer() {
   startTicks = TIMER_GET_CURRENT( );
 }
-uint32_t get_elapsed_time()
-{
+uint32_t get_elapsed_time() {
   return (Timer_diff(startTicks, TIMER_GET_CURRENT( )) * TIMER_TICK_LEN);
 }
 

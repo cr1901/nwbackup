@@ -3,15 +3,15 @@ mtcp_root = Dir('F:\Legacy\PC\SOURCE\mTCP-src_2013-05-23')
 tcp_inc_dir = mtcp_root.Dir('TCPINC')
 tcp_c_dir = mtcp_root.Dir('TCPLIB')
 common_inc_dir = mtcp_root.Dir('INCLUDE')
-#jsmn_dir = Dir('#/jsmn')
+jsmn_dir = Dir('F:\Projects\jsmn-free')
 test_dir = Dir('#/TEST')
 
 mtcp_cpp = 'packet.cpp arp.cpp eth.cpp ip.cpp tcp.cpp ' \
 	'tcpsockm.cpp udp.cpp utils.cpp dns.cpp timer.cpp ipasm.asm'
 
 debug_mode = ARGUMENTS.get('debug', 0)
-#nwbackup_src = 'nwbackup.cpp msbackup.c'
 nwbackup_src = 'NWBACKUP.C DIR.C MTCPFTP.CPP'
+jsmn_src = 'jsmn.c'
 
 #test_src = [test_dir.File(s) for s in Split('dirtest.c')]
 #print test_src
@@ -32,15 +32,19 @@ if debug_mode:
 else:
   env.Append(CCFLAGS = '-0 -w=2 -oh -ok -ot -s -oa -ol+ -ei -zp2 -bt=dos -ecw', CFLAGS= '-oi', CXXFLAGS = '-oi+')
 env.Append(LINKFLAGS = 'system dos debug all option stack=4096')
-	
+
+env.Append(LIBPATH = jsmn_dir)
 #env.Append(CCFLAGS = '--pedantic')
 	
 #conf = Configure(env)
 
-env.VariantDir('.', tcp_c_dir, False) #Includes a directory, but compiles in current.
-mtcp_objs = env.Object(Split(mtcp_cpp))
+#env.VariantDir('#', tcp_c_dir, False) #Includes a directory, but compiles in current.
+#env.VariantDir('#', jsmn_dir, False)
+
+mtcp_objs = env.Object(env.File(Split(mtcp_cpp), tcp_c_dir))
+jsmn_lib = env.Library(env.File(Split(jsmn_src), jsmn_dir))
 nwbackup_objs = env.Object(Split(nwbackup_src))
-nwbackup_exe = env.Program(nwbackup_objs + mtcp_objs)
+nwbackup_exe = env.Program(nwbackup_objs + mtcp_objs, LIBS = 'jsmn')
 
 
 dir_test = env.Program([test_dir.File('dirtest.c'), 'dir.c'])

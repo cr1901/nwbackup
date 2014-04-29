@@ -81,23 +81,21 @@ int main(int argc, char * argv[]) {
       fprintf(stderr, "Unix directory name creation failed!\n");
       return EXIT_FAILURE;
     }
-    
-    
-    if(strlen(unixPath) == 0) /* We are back at directory root if here */
-    {
+
+
+    if(strlen(unixPath) == 0) { /* We are back at directory root if here */
       printf("  Unix path: %s\n", currFile.name);
     }
-    else
-    {
+    else {
       printf("  Unix path: %s/%s\n", unixPath, currFile.name);
     }
-    
+
     if((currFile.attrib & _A_SUBDIR)) {
       /* The two relative directories can be safely
       ignored. */
       if(!(strcmp(currFile.name, ".") == 0 \
            || strcmp(currFile.name, "..") == 0)) {
-      /* Undefined behavior? */
+        /* Undefined behavior? */
         charsCopied = snprintf(path, DIR_MAX_PATH + 1, \
                                "%s\\%s", path, currFile.name);
         if(charsCopied >= DIR_MAX_PATH + 1) {
