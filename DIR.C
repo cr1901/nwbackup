@@ -14,7 +14,12 @@ int8_t initDirStack(dirStack_t * s) {
     return -1;
   }
 
-  s->pathName[0] = '\0';
+  s->pathName = calloc(DIR_MAX_PATH + 1, 1);
+  if(s->pathName == NULL)
+  {
+    return -2;
+  }
+  
   s->pathSplits[0] = 0; /* Interpret as: "Index of next free char" */
   s->nextEntry = 0;
   return 0;
@@ -119,6 +124,9 @@ int8_t popDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
 void freeDirStack(dirStack_t * s) {
   /* Free the allocated directory entries */
   free(s->entries);
+  /* And free the pathName as well. Perhaps I should
+  include a function which just resets to initial state? */
+  free(s->pathName);
 }
 
 

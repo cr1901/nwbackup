@@ -22,7 +22,7 @@ typedef struct dirent fileStruct_t;
 
 typedef struct dirStack {
   dirStruct_t * entries;
-  char pathName[DIR_MAX_PATH + 1];
+  char * pathName;
   uint16_t pathSplits[DIRSTACK_MAX_ENTRIES]; /* Probably not worth
 	allocating each time... */
 
