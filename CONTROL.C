@@ -59,18 +59,18 @@ int8_t addDirEntry(FILE * ctrlFile, char * name, dirStruct_t * d)
 
 int8_t addFileEntry(FILE * ctrlFile, char * name, fileStruct_t * f)
 {
-  fputc('{', ctrlFile);
+  fputc('[', ctrlFile);
   if(expandBackslashes(filenameBuf, name, 256) >= 256)
   {
     return -1;
   }
-  fprintf(ctrlFile, "\"%s\": \"%s\", ", "name", filenameBuf);
-  fprintf(ctrlFile, "\"%s\": %hu, ", "attr", (unsigned short) f->attrib);
-  fprintf(ctrlFile, "\"%s\": %hu, ", "mod-time", f->wr_time);
-  fprintf(ctrlFile, "\"%s\": %hu, ", "mod-date", f->wr_date);
-  fprintf(ctrlFile, "\"%s\": %lu, ", "size", f->size);
-  fprintf(ctrlFile, "\"%s\": []", "copies");
-  fputs("}, ", ctrlFile);
+  fprintf(ctrlFile, "\"%s\", ", filenameBuf);
+  fprintf(ctrlFile, "%hu, ", (unsigned short) f->attrib);
+  fprintf(ctrlFile, "%hu, ", f->wr_time);
+  fprintf(ctrlFile, "%hu, ", f->wr_date);
+  fprintf(ctrlFile, "%lu, ", f->size);
+  fprintf(ctrlFile, "[]");
+  fputs("], ", ctrlFile);
   return 0;
 }
 

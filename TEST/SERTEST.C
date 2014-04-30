@@ -70,7 +70,7 @@ int main(int argc, char * argv[])
   
   /* Initialize the "root" dir entry... relative to the 
   true root of course :P. */
-  addDirEntry(fp, "//", &currDir);
+  addDirEntry(fp, "\\", &currDir);
   
   do {
     if((currFile.attrib & _A_SUBDIR)) {
