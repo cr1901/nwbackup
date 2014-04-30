@@ -9,20 +9,14 @@
 #include "dir.h"
 
 int8_t initDirStack(dirStack_t * s) {
-  int i = 0;
-  s->entries = malloc(sizeof(dirStruct_t *) * DIRSTACK_MAX_ENTRIES);
+  s->entries = malloc(sizeof(dirStruct_t) * DIRSTACK_MAX_ENTRIES);
   if(s->entries == NULL) {
     return -1;
-  }
-
-  for(i = 0; i < DIRSTACK_MAX_ENTRIES; i++) {
-    s->entries[i] = NULL;
   }
 
   s->pathName[0] = '\0';
   s->pathSplits[0] = 0; /* Interpret as: "Index of next free char" */
   s->nextEntry = 0;
-  s->maxDepth = 0;
   return 0;
 }
 
@@ -63,15 +57,7 @@ int8_t pushDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
     }
   }
 
-  if(s->nextEntry >= s->maxDepth) {
-    s->entries[s->nextEntry] = (dirStruct_t *) malloc(sizeof(dirStruct_t));
-    if(s->entries[s->nextEntry] == NULL) {
-      return -1;
-    }
-    s->maxDepth++;
-  }
-
-  (* s->entries[s->nextEntry]) = (* d);
+  s->entries[s->nextEntry] = (* d);
   strcpy(s->pathName, pathName); /* We've already verified that paths
 		are okay, so strcpy shouldn't be dangerous here */
   /* prevSplitIndex = s->pathSplits[s->nextEntry]; */
@@ -103,7 +89,7 @@ int8_t popDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
   chances are we will need it again. */
   /* free(s->entries[(s->nextEntry)]);
   s->entries[(s->nextEntry)] = NULL; */
-  (* d) = (* s->entries[ --(s->nextEntry) ]);
+  (* d) = s->entries[ --(s->nextEntry) ];
 
   /* Since we popped a directory, reset the directory string to it's
   previous state, by truncating it to the previous length before the push.
@@ -131,14 +117,7 @@ int8_t popDir(dirStack_t * s, dirStruct_t * d, char * pathName) {
 }
 
 void freeDirStack(dirStack_t * s) {
-  int i = 0;
-  /* Free each allocated directory entry */
-  while(i < s->maxDepth) {
-    free(s->entries[i]);
-    i++;
-  }
-
-  /* Then free the pointers! */
+  /* Free the allocated directory entries */
   free(s->entries);
 }
 

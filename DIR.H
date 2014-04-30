@@ -8,7 +8,7 @@
 #endif
 #include <stdint.h>
 
-#define DIRSTACK_MAX_ENTRIES 128
+#define DIRSTACK_MAX_ENTRIES 64
 #define DIR_MAX_PATH 128
 
 /* For future portability considerations... */
@@ -21,13 +21,12 @@ typedef struct dirent fileStruct_t;
 #endif
 
 typedef struct dirStack {
-  dirStruct_t ** entries;
+  dirStruct_t * entries;
   char pathName[DIR_MAX_PATH + 1];
   uint16_t pathSplits[DIRSTACK_MAX_ENTRIES]; /* Probably not worth
 	allocating each time... */
 
   uint8_t nextEntry;
-  uint8_t maxDepth;
 } dirStack_t;
 
 /* How to handle drive letters? Convert to POSIX-like path in these functions,
