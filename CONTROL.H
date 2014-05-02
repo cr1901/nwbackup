@@ -7,12 +7,12 @@ to use different input data types, since dirStruct and fileStruct are already
 abstracted, I see no harm in using them to create control files. */
 #include "dir.h"
 
-typedef struct jsmnCtrlParser
+/* typedef struct jsmnCtrlParser
 {
   jsmn_parser parserState;
   jsmntok_t * tokens;
   uint16_t numTokens;
-}ctrlParser_t;
+}ctrlParser_t; */
 
 typedef enum ctrlEntry
 {
