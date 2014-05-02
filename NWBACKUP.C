@@ -488,14 +488,10 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
   if(!open_rc) { /* If we opened the file ok, read it to the remote */
     nwBackupCodes close_rc;
     nwBackupCodes send_rc;
-    uint16_t chars_read;
+
     int8_t done_read;
-    uint16_t actual_chars_sent;
     int8_t local_file_error;
-    //long test;
-    unsigned long total_size = 0;
-    unsigned long elapsed_time = 0;
-    unsigned long prev_elapsed = 0;
+    unsigned long total_size = 0, elapsed_time = 0, prev_elapsed = 0;
 
     done_read = 0;
     send_rc = 0;
@@ -504,6 +500,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
 
     start_timer();
     while(!done_read && (send_rc == SUCCESS || send_rc == TARGET_BUSY)  && !local_file_error) {
+      uint16_t chars_read;
       chars_read = fread(out_buffer, 1, payload_size, fp);
       //fprintf(stderr, "%d chars read\n", chars_read);
 
@@ -538,6 +535,8 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
         }
       }
       else {
+      	uint16_t actual_chars_sent;
+      	
         send_rc = sendDataRemote(nwFp, out_buffer, chars_read, &actual_chars_sent);
         total_size += actual_chars_sent;
         elapsed_time = get_elapsed_time();
