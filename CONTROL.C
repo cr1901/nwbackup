@@ -36,7 +36,7 @@ int8_t initCtrlFile(FILE * ctrlFile, int backupType, int FsType, char * rootDir)
   }
   
   rewind(ctrlFile);
-  fprintf(ctrlFile, "h,%s,%s,%s,%s,%s\n", newLineTypes[1], nwbTypes[backupType], "cp437", \
+  fprintf(ctrlFile, "h,%s,%s,%s,%s,%s,%s\n", "0.8", newLineTypes[1], nwbTypes[backupType], "cp437", \
     fsTypes[FsType], filenameBuf);
   return 0;
 }

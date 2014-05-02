@@ -159,27 +159,22 @@ char * dummy_outbuf;
 signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile) {
   char ctrl_file_name[L_tmpnam];
   FILE * ctrl_file;
-  dirStack_t dStack;
-  dirStruct_t currDir;
-  fileStruct_t currFile;
-  int8_t rc, done;
+  dirStack_t dstack;
+  dirStruct_t curr_dir;
+  fileStruct_t curr_file;
   nwBackupCodes nw_rc = SUCCESS;
-  int8_t allDirsTraversed = 0;
-  int8_t traversalError = 0;
+  int8_t all_dirs_traversed = 0;
+  int8_t traversal_error = 0;
 //  uint8_t i = 0, j = 0;
   int do_backup_rc = 0;
-  int pathEostr;
+  int path_eostr;
   /* char driveLetter[4] = {'\0', ':', '\\', '\0'}; /* The drive letter has to be handled separately
   		unfortunately... the drive letter must include the trailing
   		backslash, while all other path components do not/must not. */
 
   int charsCopied;
-  char * path;
-  char * path_and_file;
-  char * unixPath;
-  char * unix_path_and_file;
-  char * file_buffer;
-  char * out_buffer;
+  char * path, * path_and_file, * unix_path, \
+    * unix_path_and_file, * file_buffer,  * out_buffer;
 
   path = malloc(129 * 4);
   file_buffer = malloc(FILE_BUF_SIZE);
@@ -195,11 +190,11 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   /* Don't bother freeing till end of program- if error, program will terminate
   soon anyway! */
   path_and_file = path + 129;
-  unixPath = path_and_file + 129;
-  unix_path_and_file = unixPath + 129;
+  unix_path = path_and_file + 129;
+  unix_path_and_file = unix_path + 129;
   
 
-  if(initDirStack(&dStack)) {
+  if(initDirStack(&dstack)) {
     fprintf(stderr, "Directory Stack Initialization failed!\n");
     return -1;
   }
@@ -214,22 +209,22 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
             "trouble than just a bad path!\n");
   }
 
-  pathEostr = strlen(path);
-  if(path[pathEostr - 1] == 92) {
-    path[pathEostr - 1] = '\0';
-    pathEostr--;
-    /* pathEostr now points to the root path's NULL
+  path_eostr = strlen(path);
+  if(path[path_eostr - 1] == 92) {
+    path[path_eostr - 1] = '\0';
+    path_eostr--;
+    /* path_eostr now points to the root path's NULL
     terminator. */
   }
 
   //full_unix_path = malloc(strlen(parms-> strlen(remote_name) + );
 
-  if(traversalError = pushDir(&dStack, &currDir, path)) {
+  if(traversal_error = pushDir(&dstack, &curr_dir, path)) {
     fprintf(stderr, "Initial directory push failed!\n");
     return -2;
   }
 
-  if(openDir(path, &currDir, &currFile)) {
+  if(openDir(path, &curr_dir, &curr_file)) {
     fprintf(stderr, "Directory open failed!\n");
     return -3;
   }
@@ -251,7 +246,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   
   /* Initialize the "root" dir entry... relative to the 
   true root of course :P. No need- implied by ctrl file... */ 
-  /* addDirEntry(ctrl_file, "\\", &currDir); */
+  /* addDirEntry(ctrl_file, "\\", &curr_dir); */
   
   nw_rc = initRemote(parms);
   if(nw_rc != SUCCESS) {
@@ -269,15 +264,15 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   }
 
 
-  while(!allDirsTraversed && do_backup_rc == 0) {
+  while(!all_dirs_traversed && do_backup_rc == 0) {
     /* int retry_count = 0; */
     int retry_count;
     retry_count = 0;
 
     assert(_heapchk() == _HEAPOK);
-    charsCopied = snprintf(path_and_file, DIR_MAX_PATH + 1, "%s\\%s", path, currFile.name);
+    charsCopied = snprintf(path_and_file, DIR_MAX_PATH + 1, "%s\\%s", path, curr_file.name);
     if(charsCopied >= DIR_MAX_PATH + 1) {
-      traversalError = 1;
+      traversal_error = 1;
       fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
       do_backup_rc = -8;
       break;
@@ -288,42 +283,42 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     separator in path. */
 
 
-    unixPath[0] = '\0';
-    if(createUnixName(unixPath, &path[pathEostr + 1]) == NULL) {
+    unix_path[0] = '\0';
+    if(createUnixName(unix_path, &path[path_eostr + 1]) == NULL) {
       fprintf(stderr, "Unix directory name creation failed!\n");
       do_backup_rc = -7;
       break;
     }
 
 
-    if(strlen(unixPath) == 0) { /* We are back at directory root if here */
-      sprintf(unix_path_and_file, "%s", currFile.name);
+    if(strlen(unix_path) == 0) { /* We are back at directory root if here */
+      sprintf(unix_path_and_file, "%s", curr_file.name);
     }
     else {
-      sprintf(unix_path_and_file, "%s/%s", unixPath, currFile.name);
+      sprintf(unix_path_and_file, "%s/%s", unix_path, curr_file.name);
     }
 
-    if(currFile.attrib & _A_SUBDIR) {
+    if(curr_file.attrib & _A_SUBDIR) {
       /* The two relative directories can be safely
       ignored. */
-      if(!(strcmp(currFile.name, ".") == 0 \
-           || strcmp(currFile.name, "..") == 0)) {
+      if(!(strcmp(curr_file.name, ".") == 0 \
+           || strcmp(curr_file.name, "..") == 0)) {
 
         strcpy(path, path_and_file);
         
         /* Not a typo... include the leading separator, which is where
         the NULL terminator of the path root is. This is simply for reading
         purposes in the control file*/
-        addDirEntry(ctrl_file, &path[pathEostr], &currDir);
+        addDirEntry(ctrl_file, &path[path_eostr], &curr_dir);
         
-        traversalError = pushDir(&dStack, &currDir, path);
-        if(traversalError) {
+        traversal_error = pushDir(&dstack, &curr_dir, path);
+        if(traversal_error) {
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           do_backup_rc = -9;
           break;
         }
 
-        if(openDir(path, &currDir, &currFile)) {
+        if(openDir(path, &curr_dir, &curr_file)) {
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           do_backup_rc = -10;
           break;
@@ -358,30 +353,29 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     }
 
     else { /* We have a file... send it. */
-      FILE * currFp;
+      FILE * curr_fp;
       
-      addFileEntry(ctrl_file, currFile.name, &currFile);
-      currFp = fopen(path_and_file, "rb");
-      if(currFp == NULL) {
+      addFileEntry(ctrl_file, curr_file.name, &curr_file);
+      curr_fp = fopen(path_and_file, "rb");
+      if(curr_fp == NULL) {
         fprintf(stderr, "Read error on file: %s! Not continuing.", path_and_file);
         do_backup_rc = -13;
       }
       else {
-        int8_t local_error = 0;
-        setvbuf(currFp, file_buffer, _IOFBF, FILE_BUF_SIZE);
+        int8_t local_error = 0, send_done = 0;
+        setvbuf(curr_fp, file_buffer, _IOFBF, FILE_BUF_SIZE);
         fprintf(stderr, "Storing file %s...\n", unix_path_and_file);
-
-        done = 0;
-        while(!done && !local_error && retry_count <= 3) {
+        
+        while(!send_done && !local_error && retry_count <= 3) {
           int8_t send_remote_rc;
           if(retry_count) {
             fprintf(stderr, "Retrying operation...\n");
           }
 
-          send_remote_rc = send_file(currFp, unix_path_and_file, out_buffer, OUTBUF_SIZE);
+          send_remote_rc = send_file(curr_fp, unix_path_and_file, out_buffer, OUTBUF_SIZE);
           switch(send_remote_rc) {
           case 0:
-            done = 1;
+            send_done = 1;
             break;
           case -2:
             fprintf(stderr, "Read error on file: %s! Not continuing.", path_and_file);
@@ -406,7 +400,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
           }
         }
       }
-      fclose(currFp);
+      fclose(curr_fp);
     }
     fprintf(stderr, "\n");
 
@@ -418,10 +412,10 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     if(!do_backup_rc) /* Don't bother if we got here and an error occured,
       we are about to break anyway. */
     {
-      while(getNextFile(&currDir, &currFile) && !allDirsTraversed) {
-        closeDir(&currDir);
-        if(popDir(&dStack, &currDir, path)) {
-          allDirsTraversed = 1;
+      while(getNextFile(&curr_dir, &curr_file) && !all_dirs_traversed) {
+        closeDir(&curr_dir);
+        if(popDir(&dstack, &curr_dir, path)) {
+          all_dirs_traversed = 1;
         }
         else
         {
@@ -460,7 +454,6 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     }
     
     fclose(ctrl_file);
-    
     fprintf(stderr, "Full backup completed successfully.\n");
   }
 
@@ -476,7 +469,12 @@ signed char do_diff(nwBackupParms * parms, char * remote_name, char * local_dir,
 }
 
 signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile) {
-  char ctrl_file[L_tmpnam];
+  char ctrl_file_name[L_tmpnam];
+  FILE * ctrl_file;
+  dirStack_t dstack;
+  dirStruct_t curr_dir;
+  fileStruct_t curr_file;
+  
   return 0;
 }
 
