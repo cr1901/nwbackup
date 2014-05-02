@@ -500,15 +500,6 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
 
           /* Just reset the file pointer back the number of characters that
           weren't sent */
-
-          /* Casting fun
-          //test = (long) ((short) actual_chars_sent - (short) chars_read); //Good
-          //test = (long) (actual_chars_sent - chars_read); //Bad
-          //(long) ((short) actual_chars_sent - (short) chars_read); //Good
-          //(long) (actual_chars_sent - chars_read); //Good? Apparently cast is meaningless...
-          //fseek(fp, (long) ((short) actual_chars_sent - (short) chars_read), SEEK_CUR); //Good
-          //fseek(fp, (long) (actual_chars_sent - chars_read), SEEK_CUR); //Bad
-          */
         }
       }
     }

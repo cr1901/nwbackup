@@ -16,6 +16,7 @@ int main(int argc, char * argv[])
   int8_t allDirsTraversed = 0;
   int pathEostr;
   char path[129];
+  char path_and_file[129];
   int8_t traversalError = 0;
   int charsCopied;
   
@@ -150,9 +151,63 @@ int main(int argc, char * argv[])
   while(!allDirsTraversed);
   finalCtrlFile(fp);
   fclose(fp);
-  
   freeDirStack(&dStack);
+  
+  
+  fprintf(stderr, "Control file successfully created. Press a key to parse...\n");
+  getchar();
+  
+  {
+    ctrlEntryType_t entryType;
+    uint8_t * ctrlBuffer;
+    int k = 0;
+    unsigned int attr, time, date;
+    long unsigned int size;
     
+    fp = fopen(argv[2], "rb+");
+    if(fp == NULL)
+    {
+      fprintf(stderr, "Output file open failed (2)!\n");
+      return EXIT_FAILURE;
+    }
+    
+    ctrlBuffer = malloc(BUFSIZ);
+    if(ctrlBuffer == NULL)
+    {
+      fprintf(stderr, "Buffer allocation failed!\n");
+      return EXIT_FAILURE;
+    }
+    entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ); 
+    while(entryType != CTRL_EOF && entryType != CTRL_FAIL)
+    {
+      int temp;
+      //fprintf(stderr, "%d: %d,%s", k, entryType, ctrlBuffer);
+      switch(entryType)
+      {
+      case CTRL_HEADER:
+      	parseHeaderEntry(ctrlBuffer, path);
+      	fprintf(stderr, "Root directory: %s\n", path);
+      	break;
+      case CTRL_DIR:
+	temp = parseDirEntry(ctrlBuffer, path, &attr);
+      	fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu\n", temp, path, attr);
+      	break;
+      case CTRL_FILE:
+      	temp = parseFileEntry(ctrlBuffer, path, &attr, &time, &date, &size);
+      	fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu, Time %hu, Date %hu, Size %lu\n", \
+      	  temp, path, attr, time, date, size);
+      	break;
+      }
+            
+      entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ); 
+      k++;
+    }
+    
+    //initParser(&parser, fp, ctrlBuffer, BUFSIZ);
+    
+    
+    free(ctrlBuffer);
+  }
   
   
   return EXIT_SUCCESS;

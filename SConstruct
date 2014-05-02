@@ -20,7 +20,7 @@ jsmn_src = 'jsmn.c'
 env = Environment(tools = ['watcom'], USEWASM=True)
 env['MEMMODEL16'] = 'L'
 env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
-env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')])
+env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"'), 'JSMN_PARENT_LINKS'])
 if not debug_mode:
   env.Append(CPPDEFINES = ['NDEBUG'])
 env.Append(CPPPATH = [Dir('#'), tcp_inc_dir, jsmn_dir]) 
