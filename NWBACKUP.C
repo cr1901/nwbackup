@@ -7,6 +7,7 @@
 
 #include "dir.h"
 #include "nwbackup.h"
+#include "control.h"
 
 //#define FILE_BUF_SIZE 8192
 #define FILE_BUF_SIZE 4096
@@ -156,7 +157,8 @@ int main(int argc, char * argv[]) {
 
 char * dummy_outbuf;
 signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_dir, char * logfile) {
-  char ctrl_file[L_tmpnam];
+  char ctrl_file_name[L_tmpnam];
+  FILE * ctrl_file;
   dirStack_t dStack;
   dirStruct_t currDir;
   fileStruct_t currFile;
@@ -231,8 +233,26 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
     fprintf(stderr, "Directory open failed!\n");
     return -3;
   }
-
-
+  
+  if(tmpnam(ctrl_file_name) == NULL)
+  {
+    fprintf(stderr, "Attempt to allocate tmpnam() for CONTROL file failed!\n");
+    return -16;
+  }
+  
+  ctrl_file = fopen(ctrl_file_name, "wb+");
+  if(ctrl_file == NULL)
+  {
+    fprintf(stderr, "Attempt to open CONTROL file failed!\n");
+    return -17;
+  }
+  
+  initCtrlFile(ctrl_file, 0, 0, path);
+  
+  /* Initialize the "root" dir entry... relative to the 
+  true root of course :P. No need- implied by ctrl file... */ 
+  /* addDirEntry(ctrl_file, "\\", &currDir); */
+  
   nw_rc = initRemote(parms);
   if(nw_rc != SUCCESS) {
     do_backup_rc = -4;
@@ -247,7 +267,6 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
   if(!(nw_rc == SUCCESS)) {
     do_backup_rc = -6;
   }
-
 
 
   while(!allDirsTraversed && do_backup_rc == 0) {
@@ -291,6 +310,12 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
            || strcmp(currFile.name, "..") == 0)) {
 
         strcpy(path, path_and_file);
+        
+        /* Not a typo... include the leading separator, which is where
+        the NULL terminator of the path root is. This is simply for reading
+        purposes in the control file*/
+        addDirEntry(ctrl_file, &path[pathEostr], &currDir);
+        
         traversalError = pushDir(&dStack, &currDir, path);
         if(traversalError) {
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
@@ -334,6 +359,8 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
 
     else { /* We have a file... send it. */
       FILE * currFp;
+      
+      addFileEntry(ctrl_file, currFile.name, &currFile);
       currFp = fopen(path_and_file, "rb");
       if(currFp == NULL) {
         fprintf(stderr, "Read error on file: %s! Not continuing.", path_and_file);
@@ -396,17 +423,50 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
         if(popDir(&dStack, &currDir, path)) {
           allDirsTraversed = 1;
         }
+        else
+        {
+          /* Only emit a CHDIR command while there are entries on the stack. */
+          finalDirEntry(ctrl_file);
+        }
       }
     }
   }
 
   if(do_backup_rc) {
+    /* remove(ctrl_file_name); */
     fprintf(stderr, "Full backup failed with status code %d.\n", do_backup_rc);
   }
   else {
+    /* Finalize the control file... */
+    finalCtrlFile(ctrl_file);
+    fclose(ctrl_file);
+    
+    /* And send it off! Failure to send is not fatal... as long as it's
+    available prior to the restore. */
+    fprintf(stderr, "Sending control file to the server (no retry)...\n");
+    
+    ctrl_file = fopen(ctrl_file_name, "rb");
+    setvbuf(ctrl_file, file_buffer, _IOFBF, FILE_BUF_SIZE);
+    
+    if(send_file(ctrl_file, "CONTROL.NFO", out_buffer, OUTBUF_SIZE))
+    {
+      fprintf(stderr, "Couldn't send control file (%s) to the server. You can " \
+      	"send it manually using FTP later.\n", ctrl_file_name);
+    }
+    else
+    {
+      fprintf(stderr, "Control file sent successfully. A copy (%s) is " \
+      	"being kept locally.\n", ctrl_file_name);
+    }
+    
+    fclose(ctrl_file);
+    
     fprintf(stderr, "Full backup completed successfully.\n");
   }
+
+  
   closeRemote();
+  
   return 0;
 }
 

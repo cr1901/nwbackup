@@ -65,7 +65,7 @@ int8_t addFileEntry(FILE * ctrlFile, char * name, fileStruct_t * f)
 }
 
 
-int8_t closeDirEntry(FILE * ctrlFile)
+int8_t finalDirEntry(FILE * ctrlFile)
 {
   return (fputs("c\n", ctrlFile) >= 0) ? 0 : -1; 
 }

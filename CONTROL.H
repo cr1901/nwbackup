@@ -23,7 +23,7 @@ typedef enum ctrlEntry
 int8_t initCtrlFile(FILE * ctrlFile, int backupType, int FsType, char * rootDir);
 int8_t addDirEntry(FILE * ctrlFile, char * name, dirStruct_t * d);
 int8_t addFileEntry(FILE * ctrlFile, char * name, fileStruct_t * f); 
-int8_t closeDirEntry(FILE * ctrlFile);
+int8_t finalDirEntry(FILE * ctrlFile);
 int8_t finalCtrlFile(FILE * ctrlFile);
 
 //int8_t initParser(ctrlParser_t * parser, FILE * ctrlFile, uint8_t * fileBuf, uint16_t fileBufSiz);
