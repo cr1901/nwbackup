@@ -505,6 +505,10 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
                 openRc = SUCCESS;
                 break;
               default:
+              	//fprintf(stderr, "The target was inaccessible...\n");
+                /* Forgetting to close the data socket will cause an assertion failure
+                down the line... */
+              	closeAndFreeDataSocket(dataSocket);
                 openRc = TARGET_INACCESSIBLE;
                 break;
               }
@@ -546,6 +550,8 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
   else {
     openRc = ALLOCATION_FAILURE;
   }
+  
+  //fprintf(stderr, "We are at the end of openRemoteFile...\n");
   return openRc;
 }
 
@@ -643,6 +649,7 @@ nwBackupCodes rcvDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize,
   }
 
   (* charsRcvd) = tempCharsRcvd;
+  //fprintf(stderr, "Receive ok\n");
   return rcvRc;
 }
 
@@ -1049,6 +1056,8 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * PasvAddr, uint16_t * PasvPort ) 
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort) {
 
   (* s) = TcpSocketMgr::getSocket( );
+  assert((* s) != NULL);
+  assert(_heapchk() == _HEAPOK);
   int8_t rc = (* s)->setRecvBuffer( bufSize );
   if ( rc ) {
     //fprintf(stderr, "Attempt to allocate data socket failed.\n Not continuing. \n");

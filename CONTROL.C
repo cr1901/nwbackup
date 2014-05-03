@@ -49,7 +49,8 @@ int8_t addDirEntry(FILE * ctrlFile, char * name, dirStruct_t * d)
   }
   /* If no files, two spaces ensures the leading bracket isn't
   overwritten. */
-  fprintf(ctrlFile, "d,%s,%hu\n", filenameBuf, d->attrib);
+  fprintf(ctrlFile, "d,%s,%hu,%hu,%hu,%lu,%s\n", filenameBuf, d->attrib, \
+    d->wr_time, d->wr_date, d->size, "[]");
   return 0;
 }
 
@@ -176,28 +177,10 @@ int8_t parseHeaderEntry(uint8_t * ctrlFileBuf, char * rootPath)
   return 0;
 }
 
-int8_t parseDirEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr)
+int8_t parseDirEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr, \
+  unsigned int * time, unsigned int * date, unsigned long * size)
 {
-  int i = 0;
-  while(ctrlFileBuf[i] != ',')
-  {
-    i++;
-  }
-  
-  i++; /* Go past the comma. */
-  {
-    int j = 0;
-    while(ctrlFileBuf[i] != ',')
-    {
-      pathName[j] = ctrlFileBuf[i];
-      i++;
-      j++;
-    }
-    pathName[j] = 0;
-  }
-  
-  i++; /* Go past the comma... again! */
-  return (sscanf(&ctrlFileBuf[i], "%hu\n", attr) != EOF) ? 0 : -1;
+  return parseFileEntry(ctrlFileBuf, pathName, attr, time, date, size);
 }
 
 int8_t parseFileEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr, \
@@ -223,8 +206,6 @@ int8_t parseFileEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * att
   
   i++; /* Go past the comma... again! */
   return (sscanf(&ctrlFileBuf[i], "%hu,%hu,%hu,%lu", attr, time, date, size) == 4) ? 0 : -1;
-  
-  
 }
 
 

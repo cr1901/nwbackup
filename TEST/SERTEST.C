@@ -92,7 +92,7 @@ int main(int argc, char * argv[])
         /* Not a typo... include the leading separator, which is where
         the NULL terminator of the path root is. This is simply for reading
         purposes in the control file*/
-        addDirEntry(fp, &path[pathEostr], &currDir);
+        addDirEntry(fp, currFile.name, &currDir);
 
         traversalError = pushDir(&dStack, &currDir, path);
         if(traversalError) {
@@ -143,7 +143,7 @@ int main(int argc, char * argv[])
       {
       	/* Don't close the root entry automatically- that is the job of
       	finalizing the control file. */
-      	closeDirEntry(fp);
+      	finalDirEntry(fp);
       }
       //j++;
     }

@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <assert.h>
 #include <malloc.h>
+#include <direct.h>
+#include <dos.h>
+#include <fcntl.h>
 
 #include "dir.h"
 #include "nwbackup.h"
@@ -309,7 +312,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
         /* Not a typo... include the leading separator, which is where
         the NULL terminator of the path root is. This is simply for reading
         purposes in the control file*/
-        addDirEntry(ctrl_file, &path[path_eostr], &curr_dir);
+        addDirEntry(ctrl_file, curr_file.name, &curr_dir);
         
         traversal_error = pushDir(&dstack, &curr_dir, path);
         if(traversal_error) {
@@ -478,11 +481,11 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
   int path_eostr;
   
   char current_file_name[FILENAME_MAX];
-  char * path, * parsed_path, * path_and_file, * unix_path, \
+  char * path, * path_and_file, * unix_path, \
     * unix_path_and_file, * file_buffer,  * in_buffer;
   uint8_t * ctrl_buffer;
 
-  path = malloc(129 * 5);
+  path = malloc(129 * 4);
   file_buffer = malloc(FILE_BUF_SIZE);
   in_buffer = malloc(OUTBUF_SIZE);
   ctrl_buffer = malloc(BUFSIZ); /* Should be more than enough... handle dynamically 
@@ -491,20 +494,19 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
   //to zero!
   if(path == NULL || file_buffer == NULL || in_buffer == NULL || ctrl_buffer == NULL) {
     fprintf(stderr, "Could not allocate memory for path or file buffers!\n");
-    return -4;
+    return -1;
   }
   
   
   /* Don't bother freeing till end of program- if error, program will terminate
   soon anyway! */
-  parsed_path = path + 129;
-  path_and_file = parsed_path + 129;
+  path_and_file = path + 129;
   unix_path = path_and_file + 129;
   unix_path_and_file = unix_path + 129;
   
   if(initDirStack(&dstack)) {
     fprintf(stderr, "Directory Stack Initialization failed!\n");
-    return -1;
+    return -2;
   }
 
   if(!strcpy(path, local_dir))
@@ -532,30 +534,30 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
   the control file header is read. */
   if(pushDir(&dstack, &dummy_curr_dir, path)) {
     fprintf(stderr, "Initial directory push failed!\n");
-    return -2;
+    return -3;
   }
   
   if(tmpnam(ctrl_file_name) == NULL)
   {
     fprintf(stderr, "Attempt to allocate tmpnam() for receiving CONTROL failed!\n");
-    return -5;
+    return -4;
   }
   
   ctrl_file = fopen(ctrl_file_name, "wb+");
   if(ctrl_file == NULL)
   {
     fprintf(stderr, "Attempt to open temp file for receiving CONTROL failed!\n");
-    return -6;
+    return -5;
   }
   
   nw_rc = initRemote(parms);
   if(nw_rc != SUCCESS) {
-    do_restore_rc = -7;
+    do_restore_rc = -6;
   }
 
   nw_rc = chDirRemote(remote_name);
   if(!(nw_rc == SUCCESS)) {
-    do_restore_rc = -8;
+    do_restore_rc = -7;
   }
   
   if(!do_restore_rc)
@@ -568,7 +570,7 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
     {
       fprintf(stderr, "Couldn't receive control file (%s) to the server. Supply"
       	"the control file manually (not implemented) and try again.\n", ctrl_file_name);
-      do_restore_rc = -6;
+      do_restore_rc = -8;
     }
     else /* Control file was successfully grabbed. We can continue. */
     {
@@ -606,18 +608,49 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
           break;
           
         case CTRL_DIR:
-          temp = parseDirEntry(ctrl_buffer, parsed_path, &attr);
-          sprintf(path, "%s\\%s", local_dir, parsed_path);
+          temp = parseDirEntry(ctrl_buffer, current_file_name, &attr, &time, &date, &size);
+          /* Change to snprintf soon */
+          sprintf(path_and_file, "%s\\%s", path, current_file_name);
+          strcpy(path, path_and_file);
           unix_path[0] = '\0';
+          
           /* Skip the leading separator for now... */
-          if(createUnixName(unix_path, &path[path_eostr + 2]) == NULL) {
+          if(createUnixName(unix_path, &path[path_eostr + 1]) == NULL) {
             fprintf(stderr, "Unix directory name creation failed!\n");
-            do_restore_rc = -11;
+            do_restore_rc = -9;
             break;
           } 
-          fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu\nUnix name: %s\n",\
-            temp, path, attr, unix_path);
-          getchar();
+          
+          /* fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu\nUnix name: %s\n",\
+            temp, path, attr, unix_path); */
+            
+          if(_mkdir(path))
+          {
+            fprintf(stderr, "Directory creation failed (%s)!\n", path);
+            do_restore_rc = -10;
+          }
+          else
+          {
+            int dos_handle;
+            fprintf(stderr, "Directory created: %s\n", path);
+            if(_dos_open(path, O_RDONLY, &dos_handle))
+            {
+              fprintf(stderr, "Warning: Could not open directory to set attributes!\n");
+            }
+            else
+            {
+              if(_dos_setftime(dos_handle, date, time))
+              {
+              	fprintf(stderr, "Warning: Could not reset date/time on directory %s!\n", path);
+              }
+              _dos_close(dos_handle);
+              if(_dos_setfileattr(path_and_file, attr))
+              {
+              	fprintf(stderr, "Warning: Could not set attributes on directory %s!\n", path);
+              }
+            }
+          }
+          //getchar();
           break;
           
         case CTRL_FILE:
@@ -626,34 +659,111 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
           temp = parseFileEntry(ctrl_buffer, current_file_name, &attr, &time, &date, &size);
           
           /* Skip the leading separator for now... */
-          if(strlen(path) == 0)
+          sprintf(path_and_file, "%s\\%s", path, current_file_name);
+          if(strlen(path) == strlen(local_dir))
           {
-            /* Don't copy a leading separator is the path is empty... */
-            strncpy(path_and_file, current_file_name, FILENAME_MAX);
-            strcpy(unix_path_and_file, path_and_file);
+            /* Don't copy a separator if the path is 
+            at the root... otherwise the server won't find the file and/or
+            think the file is at the server's root! */
+            strcpy(unix_path_and_file, current_file_name);
           }
           else
           {
-            sprintf(path_and_file, "%s\\%s", path, current_file_name);
             sprintf(unix_path_and_file, "%s/%s", unix_path, current_file_name);
           }
-          curr_file = fopen(path_and_file, "wb");
-          fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu, Time %hu, Date %hu, Size %lu\n" \
-            "Unix directory: %s\n", temp, path_and_file, attr, time, date, size, unix_path_and_file);
+
+         /* fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu, Time %hu, Date %hu, Size %lu\n" \
+            "Unix directory: %s\n", temp, path_and_file, attr, time, date, size, unix_path_and_file); */
+          
+          /* Receive file scope block. */
+          {
+            int retry_count = 0;
+            int8_t local_error = 0, rcv_done = 0;
+            fprintf(stderr, "Receiving file %s...\n", unix_path_and_file);
+                  
+            while(!rcv_done && !local_error && retry_count <= 3) {
+              int8_t rcv_remote_rc;
+              if(retry_count) {
+                fprintf(stderr, "Retrying operation...\n");
+              }
+              
+              curr_file = fopen(path_and_file, "wb");
+              setvbuf(curr_file, file_buffer, _IOFBF, FILE_BUF_SIZE);
+              rcv_remote_rc = restore_file(curr_file, unix_path_and_file, in_buffer, OUTBUF_SIZE);
+              //rcv_remote_rc = 0;
+              fclose(curr_file); /* Close the file no matter what */
+              
+              switch(rcv_remote_rc) {
+              case 0:
+                rcv_done = 1;
+                break;
+              case -2:
+                fprintf(stderr, "Read error on file: %s! Not continuing.", path_and_file);
+                local_error = 1; /* Local file error. */
+                break;
+              case -1: /* Recoverable error. */
+              default:
+                break;
+              }
+              retry_count++;
+            }
+            
+            if(local_error) { /* If file error, we need to break out. */
+              do_restore_rc = -11;
+            }
+            else if(retry_count > 3) {
+              	do_restore_rc = -12;
+            }
+            else /* File receive ok, try setting attributes now. */
+            {
+              int dos_handle;
+              if(_dos_open(path_and_file, O_RDONLY, &dos_handle))
+              {
+                fprintf(stderr, "Warning: Could not open file to set attributes!\n");
+              }
+              else
+              {
+                if(_dos_setftime(dos_handle, date, time))
+                {
+                	fprintf(stderr, "Warning: Could not reset date/time on file %s!\n", path_and_file);
+                }
+                _dos_close(dos_handle);
+                if(_dos_setfileattr(path_and_file, attr))
+                {
+                	fprintf(stderr, "Warning: Could not set attributes on file %s!\n", path_and_file);
+                }
+              }
+            }
+          }
+          
           break;
           
         case CTRL_CDUP:
-          /* Don't bother checking return code, as if the pop fails, the next
-          entry should be end of file in a correctly-parsed control file. */
-          //popDir(&dstack, &dummy_curr_dir, path);
+          /* Remove the deepest directory of the path, as long as we
+          are not back at the invocation directory. */
+          //fprintf(stderr, "CDUP occurred.\n");
+          if(strcmp(path, local_dir))
           {
-            /* Remove the deepest directory of the path, taking into account
-            that the path separators are duplicated. */
             char * separator = strrchr(path, 92);
-            * (separator - 1) = '\0';
+            if(separator != NULL)
+            {
+              /* Two characters need to be set to null because */
+              (* separator) = '\0';
+              //fprintf(stderr, "Path was stripped. );
+            }
+            
+            fprintf(stderr, "Directory change. New path is: %s\n", path);
+            /* Skip the leading separator for now... we need to recreate
+            the unix path in case a directory does not follow next! */
+            if(createUnixName(unix_path, &path[path_eostr + 1]) == NULL) {
+              fprintf(stderr, "Unix directory name creation failed!\n");
+              do_restore_rc = -13;
+              break;
+            } 
+            
+            //getchar();
           }
           
-          //fprintf(stderr, "Pop dir stack\n");
           break;
           
         case CTRL_EOF:
@@ -662,10 +772,11 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
           break;
         default:
           fprintf(stderr, "Unexpected data from control file!\n");
-          do_restore_rc = -15;
+          do_restore_rc = -14;
           break;
         }     
         entry_type = getNextEntry(ctrl_file, ctrl_buffer, BUFSIZ);
+        fprintf(stderr, "\n");
       }     
     }
   }
@@ -682,6 +793,7 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
   
   fclose(ctrl_file);
   closeRemote();
+  remove(ctrl_file_name);
   return do_restore_rc;
 }
 
@@ -826,6 +938,8 @@ int8_t restore_file(FILE * fp, char * remote_name, uint8_t * in_buffer, uint16_t
       }
     }
     
+    //fprintf(stderr, "We got here...\n");
+    
     /* Cleanup logic scope block */
     {
       nwBackupCodes close_rc;
@@ -843,6 +957,7 @@ int8_t restore_file(FILE * fp, char * remote_name, uint8_t * in_buffer, uint16_t
         }
       }
       else {
+      	fprintf(stderr, "There was a local file error...\n");
         close_rc = closeRemoteFile(nwfp);
         remote_rc = -2; /* Do not retry transfer. */
       }

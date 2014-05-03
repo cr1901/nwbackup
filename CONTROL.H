@@ -29,7 +29,8 @@ int8_t finalCtrlFile(FILE * ctrlFile);
 //int8_t initParser(ctrlParser_t * parser, FILE * ctrlFile, uint8_t * fileBuf, uint16_t fileBufSiz);
 ctrlEntryType_t getNextEntry(FILE * ctrlFile, uint8_t * fileBuf, uint16_t fileBufSize);
 int8_t parseHeaderEntry(uint8_t * ctrlFileBuf, char * rootPath);
-int8_t parseDirEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr);
+int8_t parseDirEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr, \
+  unsigned int * time, unsigned int * date, unsigned long * size);
 int8_t parseFileEntry(uint8_t * ctrlFileBuf, char * pathName, unsigned int * attr, \
   unsigned int * time, unsigned int * date, unsigned long * size);
 
