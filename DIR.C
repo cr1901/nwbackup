@@ -15,11 +15,10 @@ int8_t initDirStack(dirStack_t * s) {
   }
 
   s->pathName = calloc(DIR_MAX_PATH + 1, 1);
-  if(s->pathName == NULL)
-  {
+  if(s->pathName == NULL) {
     return -2;
   }
-  
+
   s->pathSplits[0] = 0; /* Interpret as: "Index of next free char" */
   s->nextEntry = 0;
   return 0;

@@ -4,11 +4,10 @@
 
 #include "control.h"
 
-/* Data serialization test- create a backup control file and read it's 
+/* Data serialization test- create a backup control file and read it's
 parameters for each file. */
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
   FILE * fp;
   dirStack_t dStack;
   dirStruct_t currDir;
@@ -19,14 +18,14 @@ int main(int argc, char * argv[])
   char path_and_file[129];
   int8_t traversalError = 0;
   int charsCopied;
-  
-  
+
+
   if(argc < 3) {
     fprintf(stderr, "Please specify a directory name and an output file!\n");
     return EXIT_FAILURE;
   }
-  
-    if(initDirStack(&dStack)) {
+
+  if(initDirStack(&dStack)) {
     fprintf(stderr, "Directory Stack Initialization failed!\n");
     return EXIT_FAILURE;
   }
@@ -58,21 +57,20 @@ int main(int argc, char * argv[])
     fprintf(stderr, "Directory open failed!\n");
     return EXIT_FAILURE;
   }
-  
+
   /* Main tests begin here */
   fp = fopen(argv[2], "wb+");
-  if(fp == NULL)
-  {
+  if(fp == NULL) {
     fprintf(stderr, "Output file open failed!\n");
     return EXIT_FAILURE;
   }
-  
+
   initCtrlFile(fp, 0, 0, path);
-  
-  /* Initialize the "root" dir entry... relative to the 
+
+  /* Initialize the "root" dir entry... relative to the
   true root of course :P. */
   addDirEntry(fp, "\\", &currDir);
-  
+
   do {
     if((currFile.attrib & _A_SUBDIR)) {
       /* The two relative directories can be safely
@@ -82,13 +80,13 @@ int main(int argc, char * argv[])
         /* Undefined behavior? */
         charsCopied = snprintf(path, DIR_MAX_PATH + 1, \
                                "%s\\%s", path, currFile.name);
-        
+
         if(charsCopied >= DIR_MAX_PATH + 1) {
           traversalError = 1;
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           break;
         }
-        
+
         /* Not a typo... include the leading separator, which is where
         the NULL terminator of the path root is. This is simply for reading
         purposes in the control file*/
@@ -99,7 +97,7 @@ int main(int argc, char * argv[])
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           break;
         }
-        
+
         if(openDir(path, &currDir, &currFile)) {
           fprintf(stderr, "Directory traversal error, LINE %u!\n", __LINE__);
           perror("Reason");
@@ -139,11 +137,10 @@ int main(int argc, char * argv[])
         allDirsTraversed = 1;
         /* break; */
       }
-      else
-      {
-      	/* Don't close the root entry automatically- that is the job of
-      	finalizing the control file. */
-      	finalDirEntry(fp);
+      else {
+        /* Don't close the root entry automatically- that is the job of
+        finalizing the control file. */
+        finalDirEntry(fp);
       }
       //j++;
     }
@@ -152,63 +149,59 @@ int main(int argc, char * argv[])
   finalCtrlFile(fp);
   fclose(fp);
   freeDirStack(&dStack);
-  
-  
+
+
   fprintf(stderr, "Control file successfully created. Press a key to parse...\n");
   getchar();
-  
+
   {
     ctrlEntryType_t entryType;
     uint8_t * ctrlBuffer;
     int k = 0;
     unsigned int attr, time, date;
     long unsigned int size;
-    
+
     fp = fopen(argv[2], "rb+");
-    if(fp == NULL)
-    {
+    if(fp == NULL) {
       fprintf(stderr, "Output file open failed (2)!\n");
       return EXIT_FAILURE;
     }
-    
+
     ctrlBuffer = malloc(BUFSIZ);
-    if(ctrlBuffer == NULL)
-    {
+    if(ctrlBuffer == NULL) {
       fprintf(stderr, "Buffer allocation failed!\n");
       return EXIT_FAILURE;
     }
-    entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ); 
-    while(entryType != CTRL_EOF && entryType != CTRL_FAIL)
-    {
+    entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ);
+    while(entryType != CTRL_EOF && entryType != CTRL_FAIL) {
       int temp;
       //fprintf(stderr, "%d: %d,%s", k, entryType, ctrlBuffer);
-      switch(entryType)
-      {
+      switch(entryType) {
       case CTRL_HEADER:
-      	parseHeaderEntry(ctrlBuffer, path);
-      	fprintf(stderr, "Root directory: %s\n", path);
-      	break;
+        parseHeaderEntry(ctrlBuffer, path);
+        fprintf(stderr, "Root directory: %s\n", path);
+        break;
       case CTRL_DIR:
-	temp = parseDirEntry(ctrlBuffer, path, &attr);
-      	fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu\n", temp, path, attr);
-      	break;
+        temp = parseDirEntry(ctrlBuffer, path, &attr);
+        fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu\n", temp, path, attr);
+        break;
       case CTRL_FILE:
-      	temp = parseFileEntry(ctrlBuffer, path, &attr, &time, &date, &size);
-      	fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu, Time %hu, Date %hu, Size %lu\n", \
-      	  temp, path, attr, time, date, size);
-      	break;
+        temp = parseFileEntry(ctrlBuffer, path, &attr, &time, &date, &size);
+        fprintf(stderr, "Return code: %d Curr directory: %s, Attr: %hu, Time %hu, Date %hu, Size %lu\n", \
+                temp, path, attr, time, date, size);
+        break;
       }
-            
-      entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ); 
+
+      entryType = getNextEntry(fp, ctrlBuffer, BUFSIZ);
       k++;
     }
-    
+
     //initParser(&parser, fp, ctrlBuffer, BUFSIZ);
-    
-    
+
+
     free(ctrlBuffer);
   }
-  
-  
+
+
   return EXIT_SUCCESS;
 }

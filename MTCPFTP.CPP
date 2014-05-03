@@ -485,7 +485,7 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
         //fprintf(stderr, "We got here1\n");
         rc = parsePASVResponse(afterRetCode, &pasvAddr, &pasv_port);
         if(rc) {
-          fprintf(stderr, "Attempt to get passive port failed (%d).\n Not continuing. \n", rc);
+          fprintf(stderr, "Attempt to get passive port failed (%d).\n", rc);
           openRc = ACCESS_DENIED;
         }
         else {
@@ -505,10 +505,10 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
                 openRc = SUCCESS;
                 break;
               default:
-              	//fprintf(stderr, "The target was inaccessible...\n");
+                //fprintf(stderr, "The target was inaccessible...\n");
                 /* Forgetting to close the data socket will cause an assertion failure
                 down the line... */
-              	closeAndFreeDataSocket(dataSocket);
+                closeAndFreeDataSocket(dataSocket);
                 openRc = TARGET_INACCESSIBLE;
                 break;
               }
@@ -524,11 +524,11 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
             }
           }
           else if(rc == -1) {
-            fprintf(stderr, "Attempt to allocate data socket failed.\n Not continuing. \n");
+            fprintf(stderr, "Attempt to allocate data socket failed.\n");
             return ALLOCATION_FAILURE;
           }
           else {
-            fprintf(stderr, "Attempt to connect data socket failed.\n Not continuing. \n");
+            fprintf(stderr, "Attempt to connect data socket failed.\n");
             return TARGET_INACCESSIBLE;
           }
         }
@@ -550,7 +550,7 @@ nwBackupCodes openRemoteFile(nwFileHandle fp, char * remoteFileName, int8_t mode
   else {
     openRc = ALLOCATION_FAILURE;
   }
-  
+
   //fprintf(stderr, "We are at the end of openRemoteFile...\n");
   return openRc;
 }
