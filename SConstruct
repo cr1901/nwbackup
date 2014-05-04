@@ -9,6 +9,8 @@ test_dir = Dir('#/TEST')
 mtcp_cpp = 'packet.cpp arp.cpp eth.cpp ip.cpp tcp.cpp ' \
 	'tcpsockm.cpp udp.cpp utils.cpp dns.cpp timer.cpp ipasm.asm'
 
+#SCons doesn't detect change in H file for CPP files (and therefore doesn't
+#recompile them)?... toy with nwBackupCodes enum as need what happens.
 debug_mode = ARGUMENTS.get('debug', 0)
 nwbackup_src = 'NWBACKUP.C DIR.C CONTROL.C BACKUP.C RESTORE.C MTCPFTP.CPP'
 #jsmn_src = 'jsmn.c'
@@ -20,7 +22,7 @@ nwbackup_src = 'NWBACKUP.C DIR.C CONTROL.C BACKUP.C RESTORE.C MTCPFTP.CPP'
 env = Environment(tools = ['watcom'], USEWASM=True)
 env['MEMMODEL16'] = 'L'
 env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
-env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"'), 'JSMN_PARENT_LINKS'])
+env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"')]) #, 'JSMN_PARENT_LINKS'])
 if not debug_mode:
   pass
   #env.Append(CPPDEFINES = ['NDEBUG'])
