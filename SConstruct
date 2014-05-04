@@ -22,7 +22,8 @@ env['MEMMODEL16'] = 'L'
 env['ASFLAGS'] = '-zq -m${MEMMODEL} -0'
 env.Append(CPPDEFINES = [('CFG_H', '\"nwbackup.cfg\"'), 'JSMN_PARENT_LINKS'])
 if not debug_mode:
-  env.Append(CPPDEFINES = ['NDEBUG'])
+  pass
+  #env.Append(CPPDEFINES = ['NDEBUG'])
 env.Append(CPPPATH = [Dir('#'), tcp_inc_dir, jsmn_dir]) 
 #compile_options = -0 $(memory_model) -DCFG_H="ftp.cfg" -oh -ok -ot -s -oa -ei -zp2 -zpw -we -ob -ol+ -oi+
 #/onatx /oh /oi+ /ei /zp8 /0 /fpi87

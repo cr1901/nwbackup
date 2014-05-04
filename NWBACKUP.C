@@ -328,7 +328,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
         fprintf(stderr, "Creating directory %s...\n", unix_path_and_file);
         do {
           if(retry_count) {
-            fprintf(stderr, "Retrying operation...\n");
+            fprintf(stderr, "Retrying operation... (%d)\n", nw_rc);
           }
           nw_rc = mkDirRemote(unix_path_and_file);
           retry_count++;
@@ -370,7 +370,7 @@ signed char do_backup(nwBackupParms * parms, char * remote_name, char * local_di
         while(!send_done && !local_error && retry_count <= 3) {
           int8_t send_remote_rc;
           if(retry_count) {
-            fprintf(stderr, "Retrying operation...\n");
+            fprintf(stderr, "Retrying operation... (%d)\n", send_remote_rc);
           }
 
           send_remote_rc = send_file(curr_fp, unix_path_and_file, out_buffer, OUTBUF_SIZE);
@@ -664,7 +664,7 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
             while(!rcv_done && !local_error && retry_count <= 3) {
               int8_t rcv_remote_rc;
               if(retry_count) {
-                fprintf(stderr, "Retrying operation...\n");
+                fprintf(stderr, "Retrying operation... (%d)\n", rcv_remote_rc);
               }
 
               curr_file = fopen(path_and_file, "wb");
@@ -867,6 +867,7 @@ int8_t send_file(FILE * fp, char * remote_name, uint8_t * out_buffer, uint16_t p
     }
   }
   else {
+    fprintf(stderr, "Remote file open failed (%d)\n", open_rc);
     remote_rc = -1;
   }
 

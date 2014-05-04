@@ -589,6 +589,8 @@ nwBackupCodes sendDataRemote(nwFileHandle fp, uint8_t * buffer, uint16_t bufSize
         buf = (DataBuf *) TcpBuffer::getXmitBuf( );
         if ( buf == NULL ) {
           fprintf(stderr, "We ran out of Data buffers... wait!\n");
+          fprintf(stderr, "Data Socket stats... Outgoing: %d, Sent %d\n",
+            dataSocket->outgoing.entries, dataSocket->sent.entries);
           sendRc = TARGET_BUSY;
           (* charsSent) = 0;
           // Could not get an outgoing buffer.  It is unlikely that all of them
@@ -661,6 +663,7 @@ nwBackupCodes closeRemoteFile(nwFileHandle fp) {
   uint16_t ftpReturnVal;
   char * afterRetCode;
   closeAndFreeDataSocket(dataSocket);
+  dataSocket = NULL;
   fp = NULL;
 
   // Dummy read
@@ -740,6 +743,8 @@ int8_t pollSocketAndGetFTPRc(TcpSocket *s, uint8_t * buffer, uint16_t * charsRcv
   (* retVal) = 0; //retVal = 0; creates a null pointer :P...
   //of course DOS will happily access the null pointer as if
   //nothing's wrong :D!
+  assert(s != NULL);
+  assert(s == ctrlSocket);
   assert(retVal != NULL);
   assert(charsRcvd != NULL);
   assert(buffer == cmdResponseBuffer);
@@ -1054,7 +1059,8 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * PasvAddr, uint16_t * PasvPort ) 
 
 //Based on mTCP FTP
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort) {
-
+  assert(s != NULL);
+  assert((* s) == NULL);
   (* s) = TcpSocketMgr::getSocket( );
   assert((* s) != NULL);
   assert(_heapchk() == _HEAPOK);
