@@ -21,7 +21,7 @@ LFLAGS=-bcl=dos -q -d2
 
 
 tcp_objs=packet.obj arp.obj eth.obj ip.obj tcp.obj tcpsockm.obj udp.obj utils.obj dns.obj timer.obj ipasm.obj
-OBJS=nwbackup.obj dir.obj mtcpftp.obj control.obj
+OBJS=nwbackup.obj dir.obj mtcpftp.obj control.obj backup.obj restore.obj
 EXES=nwbackup.exe
 
 all: clean nwbackup.exe
@@ -80,7 +80,13 @@ dir.obj: dir.c
 	$(CC) $(CFLAGS) -fo=dir.obj dir.c 
 
 control.obj: control.c
-	$(CC) $(CFLAGS) -fo=control.obj control.c 	
+	$(CC) $(CFLAGS) -fo=control.obj control.c 
+	
+backup.obj: backup.c
+	$(CC) $(CFLAGS) -fo=backup.obj backup.c
+	
+restore.obj: restore.c
+	$(CC) $(CFLAGS) -fo=restore.obj restore.c 
 	
 mtcpftp.obj: mtcpftp.cpp
 	$(CPP) $(CPPFLAGS) -fo=mtcpftp.obj mtcpftp.cpp 	
