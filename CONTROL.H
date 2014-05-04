@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "jsmn.h"
+/* #include "jsmn.h" */
 
 /* Although there is nothing preventing a user from changing control functions
 to use different input data types, since dirStruct and fileStruct are already

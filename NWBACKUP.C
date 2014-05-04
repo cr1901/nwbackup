@@ -566,7 +566,6 @@ signed char do_restore(nwBackupParms * parms, char * remote_name, char * local_d
     else { /* Control file was successfully grabbed. We can continue. */
       ctrlEntryType_t entry_type;
       int8_t all_dirs_restored = 0;
-      int k = 0;
       unsigned int attr, time, date;
       long unsigned int size;
       fprintf(stderr, "Control file received successfully from the server.\n");

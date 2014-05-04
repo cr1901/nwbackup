@@ -23,7 +23,6 @@ static int expandBackslashes(char * destStr, char * srcStr, int maxChars);
 
 
 int8_t initCtrlFile(FILE * ctrlFile, int backupType, int FsType, char * rootDir) {
-  uint8_t count;
   filenameBuf = malloc(256);
   if(filenameBuf == NULL) {
     return -1;
