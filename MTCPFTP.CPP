@@ -25,7 +25,9 @@
 //C headers
 extern "C"
 {
-#include "nwbackup.h"
+//#include "nwbackup.h"
+#include "frontend.h" //Requires the check_heap function.
+#include "backend.h"
 }
 
 #define _NL_ "\r\n"
@@ -109,12 +111,6 @@ int8_t parsePASVResponse( char *pos, IpAddr_t * pasvAddr, uint16_t * pasv_port )
 int8_t openDataSocketPASV(TcpSocket ** s, uint16_t bufSize, IpAddr_t pasvAddr, uint16_t pasvPort);
 static void closeAndFreeDataSocket( TcpSocket * s );
 static void shutdown(int rc);
-
-extern "C" {
-  void start_timer();
-  uint32_t get_elapsed_time();
-}
-
 
 
 
@@ -1117,13 +1113,37 @@ static void shutdown( int rc ) {
 }
 
 
-void start_timer() {
+void startTimer() {
   startTicks = TIMER_GET_CURRENT( );
 }
-uint32_t get_elapsed_time() {
+uint32_t getElapsedTime() {
   return (Timer_diff(startTicks, TIMER_GET_CURRENT( )) * TIMER_TICK_LEN);
 }
 
+
+/* Stolen from MTCP FTP... */
+uint32_t computeRate( uint32_t bytes, uint32_t elapsed ) {
+  uint32_t rate;
+
+  if ( elapsed == 0 ) {
+    elapsed = 55;
+  }
+
+  if ( bytes < 2000000ul ) {
+    rate = (bytes * 1000) / elapsed;
+  }
+  else if ( bytes < 20000000ul ) {
+    rate = (bytes * 100) / (elapsed/10);
+  }
+  else if ( bytes < 200000000ul ) {
+    rate = (bytes * 10) / (elapsed/100);
+  }
+  else {
+    rate = bytes / (elapsed / 1000);
+  }
+
+  return rate;
+}
 
 
 

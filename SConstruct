@@ -10,7 +10,7 @@ mtcp_cpp = 'packet.cpp arp.cpp eth.cpp ip.cpp tcp.cpp ' \
 	'tcpsockm.cpp udp.cpp utils.cpp dns.cpp timer.cpp ipasm.asm'
 
 debug_mode = ARGUMENTS.get('debug', 0)
-nwbackup_src = 'NWBACKUP.C DIR.C CONTROL.C MTCPFTP.CPP'
+nwbackup_src = 'NWBACKUP.C DIR.C CONTROL.C BACKUP.C RESTORE.C MTCPFTP.CPP'
 #jsmn_src = 'jsmn.c'
 
 #test_src = [test_dir.File(s) for s in Split('dirtest.c')]
