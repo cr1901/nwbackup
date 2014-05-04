@@ -9,8 +9,10 @@ common_h_dir = $(MTCPROOT)\INCLUDE
 
 CC=wcl
 CPP=wcl
-CFLAGS=-c -m$(MODELCHR) -d__DOS__ -ecw -I. -d2 -q
-CPPFLAGS=-c -cc++ -m$(MODELCHR) -d__DOS__ -dCFG_H="nwbackup.cfg" -ecw -I.;$(tcp_h_dir) -d2 -q
+CFLAGS=-c -m$(MODELCHR) -d__DOS__ -ecw -I. -w=2 -d2 -q
+CPPFLAGS=-c -cc++ -m$(MODELCHR) -d__DOS__ -dCFG_H="nwbackup.cfg" -ecw -I.;$(tcp_h_dir) -w=2 -d2 -q
+#CFLAGS=-c -m$(MODELCHR) -d__DOS__ -ecw -I. -0 -w=2 -oh -ok -ot -s -oa -ol+ -ei -zp2 -q
+#CPPFLAGS=-c -cc++ -m$(MODELCHR) -d__DOS__ -dCFG_H="nwbackup.cfg" -ecw -I.;$(tcp_h_dir) -0 -w=2 -oh -ok -ot -s -oa -ol+ -ei -zp2 -q
 AS=wasm
 AFLAGS= -0 -m$(MODELCHR) -q
 LIB=wlib
@@ -19,7 +21,7 @@ LFLAGS=-bcl=dos -q -d2
 
 
 tcp_objs=packet.obj arp.obj eth.obj ip.obj tcp.obj tcpsockm.obj udp.obj utils.obj dns.obj timer.obj ipasm.obj
-OBJS=nwbackup.obj dir.obj mtcpftp.obj
+OBJS=nwbackup.obj dir.obj mtcpftp.obj control.obj
 EXES=nwbackup.exe
 
 all: clean nwbackup.exe
@@ -77,6 +79,9 @@ nwbackup.obj: nwbackup.c
 dir.obj: dir.c
 	$(CC) $(CFLAGS) -fo=dir.obj dir.c 
 
+control.obj: control.c
+	$(CC) $(CFLAGS) -fo=control.obj control.c 	
+	
 mtcpftp.obj: mtcpftp.cpp
 	$(CPP) $(CPPFLAGS) -fo=mtcpftp.obj mtcpftp.cpp 	
 
