@@ -3,8 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <direct.h>
+
+#ifdef __DOS__
 #include <dos.h>
 #include <fcntl.h>
+#endif
 
 #include "backend.h"
 #include "frontend.h"

@@ -59,8 +59,12 @@ temp_test = env.Program(test_dir.File('tmptest.c'))
 #ftpret_test = env.Program([test_dir.File('ftpret.c'), 'mtcpftp.cpp'] + mtcp_objs)
 
 test_exes = [dir_test, mdir_test, ftp_test, temp_test] #, ser_test]
-env.Alias('test', test_exes)
-env.Alias('all', [nwbackup_exe, test_exes])
+test_alias = env.Alias('test', test_exes)
+all_alias = env.Alias('all', [nwbackup_exe, test_exes])
 
-Default(mtcp_objs + nwbackup_exe)
+def_target = mtcp_objs + nwbackup_exe
+Default(def_target)
 #Default(mtcp_objs + nwbackup_objs)
+for tgt in [def_target, test_alias, all_alias]:
+  Clean(tgt, [Glob('*.map'), Glob('*.err')])
+  #Clean(tgt, [Glob('*.orig'), Glob('*.map'), Glob('*.err')])
